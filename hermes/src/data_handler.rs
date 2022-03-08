@@ -3,9 +3,24 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use chrono::{Datelike, Timelike, Utc};
 
+pub struct Store
+{
+    groups: Arc<Mutex<HashMap<String, Group>>>,
+}
+
+impl Store
+{
+    pub fn new() -> Store
+    {
+        Store
+        {
+            groups: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
+
 pub struct Group
 {
-    name: String,
     content: Arc<Mutex<HashMap<String, Item>>>,
 }
 
@@ -22,11 +37,10 @@ impl Group
     /// # Return value:
     ///
     /// Group sturcture.
-    pub fn new(name: String) -> Group
+    pub fn new() -> Group
     {
         Group
         {
-            name: name,
             content: Arc::new(Mutex::new(HashMap::new())),
         }
     }
