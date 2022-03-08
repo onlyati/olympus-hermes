@@ -10,6 +10,11 @@ use hermes_config::HermesConfig;
 mod thread_pool;
 use thread_pool::ThreadPool;
 
+mod data_handler;
+use data_handler::Group;
+use data_handler::Item;
+
+
 fn main() 
 {
     // Read the arguments and parse it onto a structure
