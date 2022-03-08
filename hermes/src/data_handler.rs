@@ -3,25 +3,9 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use chrono::{Datelike, Timelike, Utc};
 
-pub struct Store
-{
-    groups: Arc<Mutex<HashMap<String, Group>>>,
-}
-
-impl Store
-{
-    pub fn new() -> Store
-    {
-        Store
-        {
-            groups: Arc::new(Mutex::new(HashMap::new())),
-        }
-    }
-}
-
 pub struct Group
 {
-    content: Arc<Mutex<HashMap<String, Item>>>,
+    content: HashMap<String, Item>,
 }
 
 impl Group
@@ -41,7 +25,7 @@ impl Group
     {
         Group
         {
-            content: Arc::new(Mutex::new(HashMap::new())),
+            content: HashMap::new(),
         }
     }
 
@@ -58,13 +42,7 @@ impl Group
     /// It returns a Tuple which is within Option. If no key was found, it returns with None, else it returns with Some<(String, String)>.
     pub fn find(&self, item_name: &str) -> Option<Item>
     {
-        let list = self.content.clone();
-        let list = match list.lock() {
-            Ok(guard) => guard,
-            Err(posion) => posion.into_inner(),
-        };
-
-        match list.get(item_name) {
+        match self.content.get(item_name) {
             Some(v) => return Option::Some(Item::new(String::from(&v.last_update[..]), String::from(&v.content[..]))),
             None => return Option::None,
         }
@@ -81,21 +59,16 @@ impl Group
     /// # Return value:
     ///
     /// Returns with a vector which contains a tuple `(String, Item)`.
-    pub fn filter(&self, name_chunk: &str) -> Option<Vec<(String, Item)>>
+    pub fn filter(&self, name_chunk: &str) -> Option<Vec<(String, String, String)>>
     {
-        let list = self.content.clone();
-        let list = match list.lock() {
-            Ok(guard) => guard,
-            Err(posion) => posion.into_inner(),
-        };
+        let mut output: Vec<(String, String, String)> = Vec::new();
 
-        let mut output: Vec<(String, Item)> = Vec::new();
-
-        for item in list.iter()
+        for item in self.content.iter()
         {
             if item.0.contains(name_chunk)
             {
-                output.push((item.0.to_string(), Item::new(String::from(item.1.last_update.as_str()), String::from(item.1.content.as_str()))));
+                let tuple = (item.0.to_string(), item.1.last_update.clone(), item.1.content.clone());
+                output.push(tuple);
             }
         }
 
@@ -113,20 +86,11 @@ impl Group
     ///
     /// - Name of the item
     /// - Value of the item
-    pub fn insert_or_update(&self, item_name: &str, value: &str) -> bool
+    pub fn insert_or_update(&mut self, item_name: &str, value: &str) -> bool
     {
         let now = Utc::now();
-
         let time_now = format!("{}-{}-{} {}:{}:{}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
-
-        let list = self.content.clone();
-        let mut list = match list.lock() {
-            Ok(guard) => guard,
-            Err(posion) => posion.into_inner(),
-        };
-
-        list.insert(item_name.to_string(), Item::new(String::from(time_now), String::from(value)));
-
+        self.content.insert(item_name.to_string(), Item::new(String::from(time_now), String::from(value)));
         return true;
     }
 }
