@@ -39,11 +39,11 @@ impl Group
     ///
     /// # Return:
     ///
-    /// It returns a Tuple which is within Option. If no key was found, it returns with None, else it returns with Some<(String, String)>.
-    pub fn find(&self, item_name: &str) -> Option<Item>
+    /// It returns a Tuple which is within Option. If no key was found, it returns with None, else it returns with Some<(String, String, String)>.
+    pub fn find(&self, item_name: &str) -> Option<(String, String, String)>
     {
         match self.content.get(item_name) {
-            Some(v) => return Option::Some(Item::new(String::from(&v.last_update[..]), String::from(&v.content[..]))),
+            Some(v) => return Option::Some((item_name.to_string(), v.last_update.clone(), v.content.clone())),
             None => return Option::None,
         }
     }
@@ -58,7 +58,7 @@ impl Group
     ///
     /// # Return value:
     ///
-    /// Returns with a vector which contains a tuple `(String, Item)`.
+    /// Returns with a vector which contains a tuple `(String, String, String)`.
     pub fn filter(&self, name_chunk: &str) -> Option<Vec<(String, String, String)>>
     {
         let mut output: Vec<(String, String, String)> = Vec::new();
@@ -88,14 +88,22 @@ impl Group
     /// - Value of the item
     pub fn insert_or_update(&mut self, item_name: &str, value: &str) -> bool
     {
+        if let Some(v) = self.content.get(item_name) 
+        {
+            if v.content == value.to_string() {
+                return true;
+            }
+        }
+
         let now = Utc::now();
         let time_now = format!("{}-{}-{} {}:{}:{}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
         self.content.insert(item_name.to_string(), Item::new(String::from(time_now), String::from(value)));
+
         return true;
     }
 }
 
-pub struct Item
+struct Item
 {
     last_update: String,
     content: String,
@@ -103,7 +111,7 @@ pub struct Item
 
 impl Item
 {
-    pub fn new(date_time_now: String, content: String) -> Item
+    fn new(date_time_now: String, content: String) -> Item
     {
         Item
         {
