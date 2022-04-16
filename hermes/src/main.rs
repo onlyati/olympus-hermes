@@ -23,7 +23,7 @@ mod data_handler;
 use data_handler::Group;
 
 static DATA: OnceCell<Mutex<Group>> = OnceCell::new();
-const BUFFER_SIZE: usize = 128;
+const BUFFER_SIZE: usize = 4096;
 
 fn main() 
 {
@@ -139,7 +139,7 @@ fn handle_request(mut stream: TcpStream, endpoints: Arc<Mutex<EndPointCollection
     
     // Default answer
     let mut response = RequestResponse::new(HttpResponse::BadRequest, HashMap::new(), String::from(""));
-    
+
     let infos = RequestInfo::new(&incoming_data[..]);
     if let Some(info) = infos {
         // If parse was successful, then find endpoint for it
