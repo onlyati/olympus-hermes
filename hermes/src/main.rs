@@ -10,7 +10,6 @@ use onlyati_http::parser::EndPointType;
 use onlyati_http::parser::RequestInfo;
 use onlyati_http::parser::RequestResponse;
 use onlyati_http::endpoints::EndPointCollection;
-use onlyati_http::endpoints::EndPointAction;
 
 use once_cell::sync::OnceCell;
 
@@ -24,6 +23,7 @@ mod data_handler;
 use data_handler::Group;
 
 static DATA: OnceCell<Mutex<Group>> = OnceCell::new();
+const BUFFER_SIZE: usize = 128;
 
 fn main() 
 {
@@ -108,26 +108,39 @@ fn main()
     println!("Hermes is shutting down...");
 }
 
+/// Handle requeste
+/// 
+/// Function which is passed to each thread to execute:
+/// 1. Read the incomcing data
+/// 2. Parse it onto `RequestResponse` request
+/// 3. Calling execution for endpoints
+/// 4. Send the request back to the caller
 fn handle_request(mut stream: TcpStream, endpoints: Arc<Mutex<EndPointCollection>>) {
-    let mut buffer = [0; 4096];
-    buffer.fill(0x00);
-    stream.read(&mut buffer).unwrap();
+    let mut incoming_data: String = String::new();
+    let mut buffer_count: usize = BUFFER_SIZE;
+    
+    while buffer_count == BUFFER_SIZE {
+        let mut buffer = [0; BUFFER_SIZE];
+        buffer.fill(0x00);
+        match stream.read(&mut buffer) {
+            Ok(r) => {
+                incoming_data = incoming_data + String::from_utf8_lossy(&buffer[0..r]).trim();
+                buffer_count = r;
+            },
+            Err(e) => {
+                let mut header: HashMap<String, String> = HashMap::new();
+                header.insert(String::from("Content-Type"), String::from("plain/text"));
+                let response = RequestResponse::new(HttpResponse::InternalServerError, header, String::from("Sorry :-("));
+                stream.write(response.print().as_bytes()).unwrap();
+                stream.flush().unwrap();
+            },
+        }
+    }
     
     // Default answer
     let mut response = RequestResponse::new(HttpResponse::BadRequest, HashMap::new(), String::from(""));
-
-    // Parse the incoming request onto a structure
-    let input = String::from_utf8_lossy(&buffer[..]).trim().to_string();
     
-    let mut index: usize = 0;
-    match input.find('\0') {
-        Some(r) => index = r,
-        _ => (),
-    }
-
-    let input = String::from(&input[0..index]);
-
-    let infos = RequestInfo::new(&input[..]);
+    let infos = RequestInfo::new(&incoming_data[..]);
     if let Some(info) = infos {
         // If parse was successful, then find endpoint for it
         {
@@ -143,16 +156,22 @@ fn handle_request(mut stream: TcpStream, endpoints: Arc<Mutex<EndPointCollection
     stream.flush().unwrap();
 }
 
+/// Set value
+/// 
+/// This is called for POST /set?name=xxxxx request. Value of the key is in the `info.body`
 fn set_value(info: &RequestInfo) -> RequestResponse {
+    // Response will be plain text
     let mut header: HashMap<String, String> = HashMap::new();
     header.insert(String::from("Content-Type"), String::from("plain/text"));
 
+    // Save the name of the key
     let name: String;
     match info.parameters.get("name") {
         Some(r) => name = String::from(r),
         None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missign parameter: name")),
     }
 
+    // Save the value from the body
     let value: String;
     if !info.body.trim().is_empty() {
         value = String::from(info.body.trim());
@@ -161,9 +180,10 @@ fn set_value(info: &RequestInfo) -> RequestResponse {
         return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing in body: value of key"));
     }
 
+    // Try to insert incoming data and assemble the response accordingly
     let data_mut = DATA.get();
     match data_mut {
-        Some(r) => {
+        Some(_) => {
             {
                 let mut data = data_mut.unwrap().lock().unwrap();
                 data.insert_or_update(&name[..], &value[..]);
@@ -172,20 +192,24 @@ fn set_value(info: &RequestInfo) -> RequestResponse {
         },
         None => return RequestResponse::new(HttpResponse::InternalServerError, header, String::from("Sorry :-(")),
     }
-
-    return RequestResponse::new(HttpResponse::Ok, HashMap::new(), String::from(""));
 }
 
+/// Get value
+/// 
+/// This is called for GET /get?name=xxxx request. It returns the value of the key.
 fn get_value(info: &RequestInfo) -> RequestResponse {
+    // Response will be plain text
     let mut header: HashMap<String, String> = HashMap::new();
     header.insert(String::from("Content-Type"), String::from("plain/text"));
 
+    // Get key name from parameters
     let name: String;
     match info.parameters.get("name") {
         Some(r) => name = String::from(r),
         None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missign parameter: name")),
     }
 
+    // Try to find data, set response accordingly
     let data_mut = DATA.get();
     match data_mut {
         Some(r) => {
@@ -193,7 +217,7 @@ fn get_value(info: &RequestInfo) -> RequestResponse {
                 let mut data = data_mut.unwrap().lock().unwrap();
                 match data.find(&name[..]) {
                     Some(r) => {
-                        let resp: String = format!("{}\n{}\n{}\n", r.0, r.2, r.1);
+                        let resp: String = format!("{}\n{}\n{}\n", r.1, r.0, r.2);
                         return RequestResponse::new(HttpResponse::Ok, header, resp);
                     },
                     None => return RequestResponse::new(HttpResponse::NotFound, header, String::from("Key was not found")),
