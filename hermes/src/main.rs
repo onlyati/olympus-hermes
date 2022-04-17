@@ -36,7 +36,7 @@ fn main()
 
     // Read configuration from file
     let config_tmp = onlyati_config::read_config(args[1].as_str());
-    let mut config: HashMap<String, String> = HashMap::new();
+    let mut config: HashMap<String, String>;
 
     match config_tmp {
         Ok(r) => config = r,
