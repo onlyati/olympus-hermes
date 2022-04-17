@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::collections::LinkedList;
 use chrono::{Datelike, Timelike, Utc};
 
 pub struct Group
@@ -58,23 +57,69 @@ impl Group
     ///
     /// # Return value:
     ///
-    /// Returns with a vector which contains a tuple `(String, String, String)`.
-    pub fn filter(&self, name_chunk: &str) -> Option<Vec<(String, String, String)>>
+    /// Returns with a vector which contains a String elements.
+    pub fn filter(&self, name_chunk: &str) -> Option<Vec<String>>
     {
-        let mut output: Vec<(String, String, String)> = Vec::new();
+        let mut output_list: LinkedList<String> = LinkedList::new();
 
-        for item in self.content.iter()
-        {
-            if item.0.contains(name_chunk)
-            {
-                let tuple = (item.0.to_string(), item.1.last_update.clone(), item.1.content.clone());
-                output.push(tuple);
+        let chunk_length = name_chunk.len();
+        let mask: &str = "*";
+
+        if name_chunk == mask {
+            // List everything
+            for item in self.content.iter() {
+                output_list.push_back(item.0.to_string());
             }
+            return convert_to_vec_string(output_list);
         }
 
-        match output.len() {
-            0 => Option::None,
-            _ => Some(output),
+        if &name_chunk[0..1] == mask && &name_chunk[chunk_length - 1..chunk_length] == mask {
+            let mut name_chunk_reduced: &str = &name_chunk[..chunk_length - 1];
+            name_chunk_reduced = &name_chunk_reduced[1..];
+            // List contains
+            for item in self.content.iter() {
+                if item.0.contains(name_chunk_reduced) {
+                    output_list.push_back(item.0.to_string());
+                }
+            }
+            return convert_to_vec_string(output_list);
+        }
+
+        if &name_chunk[0..1] == mask {
+            // Begin is wildcarded
+            let name_chunk_reduced = &name_chunk[1..];
+            let name_chunk_reduced_size = name_chunk_reduced.len();
+            for item in self.content.iter() {
+                let item_len = item.0.len();
+                if name_chunk_reduced_size > item_len {
+                    continue;
+                }
+                let start_size = item_len - name_chunk_reduced_size;
+                if &item.0[start_size..] == name_chunk_reduced {
+                    output_list.push_back(item.0.to_string());
+                }
+            }
+            return convert_to_vec_string(output_list);
+        }
+
+        if &name_chunk[chunk_length - 1..chunk_length] == mask {
+            // End is wildcarded
+            let name_chunk_reduced: &str = &name_chunk[..chunk_length - 1];
+            let name_chunk_reduced_size = name_chunk_reduced.len();
+            for item in self.content.iter() {
+                if &item.0[0..name_chunk_reduced_size] == name_chunk_reduced {
+                    output_list.push_back(item.0.to_string());
+                }
+            }
+            return convert_to_vec_string(output_list);
+        }
+
+        match self.content.get(name_chunk) {
+            Some(_) => {
+                output_list.push_back(String::from(name_chunk));
+                return convert_to_vec_string(output_list);
+            },
+            None => return None,
         }
     }
 
@@ -86,12 +131,10 @@ impl Group
     ///
     /// - Name of the item
     /// - Value of the item
-    pub fn insert_or_update(&mut self, item_name: &str, value: &str) -> bool
-    {
-        if let Some(v) = self.content.get(item_name) 
-        {
+    pub fn insert_or_update(&mut self, item_name: &str, value: &str) -> Option<String> {
+        if let Some(v) = self.content.get(item_name) {
             if v.content == value.to_string() {
-                return true;
+                return None;
             }
         }
 
@@ -99,7 +142,25 @@ impl Group
         let time_now = format!("{}-{}-{} {}:{}:{}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
         self.content.insert(item_name.to_string(), Item::new(String::from(time_now), String::from(value)));
 
-        return true;
+        return Some(format!("Item ({}) is added", item_name));
+    }
+
+    /// Delete item
+    /// 
+    /// This function try to delete from the group
+    /// 
+    /// # Input(s):__rust_force_expr!
+    /// 
+    /// - Name of the item
+    /// 
+    /// # Return
+    /// 
+    /// Result, depends that remove was successful or not
+    pub fn delete(&mut self, item_name: &str) -> Option<String> {
+        match self.content.remove(item_name) {
+            Some(_) => return Some(format!("Item ({}) is deleted", item_name)),
+            None => return None,
+        }
     }
 }
 
@@ -118,5 +179,20 @@ impl Item
             last_update: date_time_now,
             content: content,
         }
+    }
+}
+
+fn convert_to_vec_string(list: LinkedList<String>) -> Option<Vec<String>> {
+    let mut output: Vec<String> = Vec::with_capacity(list.len());
+
+    let mut i: i32 = 0;
+    for item in list {
+        output.push(item);
+        i = i + 1;
+    }
+
+    match output.len() {
+        0 => Option::None,
+        _ => Some(output),
     }
 }

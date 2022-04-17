@@ -56,8 +56,10 @@ fn main()
 
     // Setup REST API endpoints
     let mut endpoints = EndPointCollection::new();
-    endpoints.add("/get", EndPointType::GET, get_value);
-    endpoints.add("/set", EndPointType::POST, set_value);
+    endpoints.add("/item/get", EndPointType::GET, get_value);
+    endpoints.add("/item/set", EndPointType::POST, set_value);
+    endpoints.add("/item/remove", EndPointType::DELETE, remove_value);
+    endpoints.add("/item/filter", EndPointType::GET, filter_value);
 
     // Setup Threadpool
     if !config.contains_key("threads") {
@@ -127,7 +129,7 @@ fn handle_request(mut stream: TcpStream, endpoints: Arc<Mutex<EndPointCollection
                 incoming_data = incoming_data + String::from_utf8_lossy(&buffer[0..r]).trim();
                 buffer_count = r;
             },
-            Err(e) => {
+            Err(_) => {
                 let mut header: HashMap<String, String> = HashMap::new();
                 header.insert(String::from("Content-Type"), String::from("plain/text"));
                 let response = RequestResponse::new(HttpResponse::InternalServerError, header, String::from("Sorry :-("));
@@ -156,9 +158,77 @@ fn handle_request(mut stream: TcpStream, endpoints: Arc<Mutex<EndPointCollection
     stream.flush().unwrap();
 }
 
+fn filter_value(info: &RequestInfo) -> RequestResponse {
+    // Response will be plain text
+    let mut header: HashMap<String, String> = HashMap::new();
+    header.insert(String::from("Content-Type"), String::from("plain/text"));
+
+    // Get the filter value
+    let filter: String;
+    match info.parameters.get("name") {
+        Some(r) => filter = String::from(r),
+        None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing paramter: name")),
+    }
+
+    let data_mut = DATA.get();
+    match data_mut {
+        Some(_) => {
+            let mut list: Vec<String>;
+            {
+                let mut data = data_mut.unwrap().lock().unwrap();
+                match data.filter(&filter[..]) {
+                    Some(v) => list = v,
+                    None => list = Vec::new(),
+                }
+            }
+
+            let mut answer: String = format!("{}\n", list.len());
+            for key in list {
+                answer = answer + &key[..] + "\n";
+            }
+
+            return RequestResponse::new(HttpResponse::Ok, header, answer);
+
+        },
+        None => return RequestResponse::new(HttpResponse::InternalServerError, header, String::from("Sorry :-(")),
+    }
+}
+
+/// Delete value
+/// 
+/// This is called for DELETE /item/remove?name=xxxxxx request.
+fn remove_value(info: &RequestInfo) -> RequestResponse {
+    // Response will be plain text
+    let mut header: HashMap<String, String> = HashMap::new();
+    header.insert(String::from("Content-Type"), String::from("plain/text"));
+
+    // Save the name of the key
+    let name: String;
+    match info.parameters.get("name") {
+        Some(r) => name = String::from(r),
+        None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing parameter: name")),
+    }
+
+    let data_mut = DATA.get();
+    match data_mut {
+        Some(_) => {
+            let mut answer: String;
+            {
+                let mut data = data_mut.unwrap().lock().unwrap();
+                match data.delete(&name[..]) {
+                    Some(v) => answer = v,
+                    None => answer = String::from("Key was not exist"),
+                }
+                return RequestResponse::new(HttpResponse::Ok, header, answer);
+            }
+        },
+        None => return RequestResponse::new(HttpResponse::InternalServerError, header, String::from("Sorry :-(")),
+    }
+}
+
 /// Set value
 /// 
-/// This is called for POST /set?name=xxxxx request. Value of the key is in the `info.body`
+/// This is called for POST /item/set?name=xxxxx request. Value of the key is in the `info.body`
 fn set_value(info: &RequestInfo) -> RequestResponse {
     // Response will be plain text
     let mut header: HashMap<String, String> = HashMap::new();
@@ -168,7 +238,7 @@ fn set_value(info: &RequestInfo) -> RequestResponse {
     let name: String;
     match info.parameters.get("name") {
         Some(r) => name = String::from(r),
-        None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missign parameter: name")),
+        None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing parameter: name")),
     }
 
     // Save the value from the body
@@ -184,11 +254,15 @@ fn set_value(info: &RequestInfo) -> RequestResponse {
     let data_mut = DATA.get();
     match data_mut {
         Some(_) => {
+            let mut answer: String = String::new();
             {
                 let mut data = data_mut.unwrap().lock().unwrap();
-                data.insert_or_update(&name[..], &value[..]);
+                match data.insert_or_update(&name[..], &value[..]) {
+                    Some(v) => answer = v.clone(),
+                    None => answer = String::from("Key already has this value, no update"),
+                }
             }
-            return RequestResponse::new(HttpResponse::Ok, header, String::from(""));
+            return RequestResponse::new(HttpResponse::Ok, header, answer);
         },
         None => return RequestResponse::new(HttpResponse::InternalServerError, header, String::from("Sorry :-(")),
     }
@@ -196,7 +270,7 @@ fn set_value(info: &RequestInfo) -> RequestResponse {
 
 /// Get value
 /// 
-/// This is called for GET /get?name=xxxx request. It returns the value of the key.
+/// This is called for GET /item/get?name=xxxx request. It returns the value of the key.
 fn get_value(info: &RequestInfo) -> RequestResponse {
     // Response will be plain text
     let mut header: HashMap<String, String> = HashMap::new();
@@ -206,7 +280,7 @@ fn get_value(info: &RequestInfo) -> RequestResponse {
     let name: String;
     match info.parameters.get("name") {
         Some(r) => name = String::from(r),
-        None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missign parameter: name")),
+        None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing parameter: name")),
     }
 
     // Try to find data, set response accordingly
