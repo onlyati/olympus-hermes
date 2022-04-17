@@ -56,10 +56,10 @@ fn main()
 
     // Setup REST API endpoints
     let mut endpoints = EndPointCollection::new();
-    endpoints.add("/item/get", EndPointType::GET, get_value);
-    endpoints.add("/item/set", EndPointType::POST, set_value);
-    endpoints.add("/item/remove", EndPointType::DELETE, remove_value);
-    endpoints.add("/item/filter", EndPointType::GET, filter_value);
+    endpoints.add("/item", EndPointType::GET, get_value);
+    endpoints.add("/item", EndPointType::POST, set_value);
+    endpoints.add("/item", EndPointType::DELETE, remove_value);
+    endpoints.add("/filter", EndPointType::GET, filter_value);
 
     // Setup Threadpool
     if !config.contains_key("threads") {

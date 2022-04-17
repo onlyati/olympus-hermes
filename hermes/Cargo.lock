@@ -70,7 +70,7 @@ source = "git+https://gitlab.atihome.lan/rust-libs/onlyati-config?tag=latest#678
 [[package]]
 name = "onlyati_http"
 version = "0.1.0"
-source = "git+https://gitlab.atihome.lan/rust-libs/onlyati-http?tag=latest#9cf765a853cff0e0ef69da65b1e8e766cb1803e9"
+source = "git+https://gitlab.atihome.lan/rust-libs/onlyati-http?tag=latest#045a7f9057b86a22ea70f91f33167fb8e1aabc21"
 dependencies = [
  "percent-encoding",
 ]
