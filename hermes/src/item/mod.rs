@@ -8,7 +8,18 @@ use crate::DATA;
 
 /// Delete value
 /// 
-/// This is called for DELETE /item/remove?name=xxxxxx request.
+/// This is called for DELETE request. Function delete the requested record from the specified group.
+/// 
+/// ## HTTP variables:
+/// 
+/// - `name`: Name of the item in group
+/// - `group`: Name of the group where the item will be searched
+/// 
+/// ## HTTP returns:
+/// 
+/// - `BadRequest`: If `name` or `group` is/are missing
+/// - `InternalServerError`: If there are some issue, e.g.: problem with Mutex lock
+/// - `Ok`: If key was successfully removed
 pub fn remove_value(info: &RequestInfo) -> RequestResponse {
     // Response will be plain text
     let mut header: HashMap<String, String> = HashMap::new();
@@ -40,7 +51,18 @@ pub fn remove_value(info: &RequestInfo) -> RequestResponse {
 
 /// Set value
 /// 
-/// This is called for POST /item/set?name=xxxxx request. Value of the key is in the `info.body`
+/// This is called for POST request. This function add new item onto Group structure. If Group does not exist, it create it.
+/// 
+/// ## HTTP variables:
+/// 
+/// - `name`: Name of the item in group
+/// - `group`: Name of the group where the item will be searched
+/// 
+/// ## HTTP returns:
+/// 
+/// - `BadRequest`: If `name` or `group` is/are missing
+/// - `InternalServerError`: If there are some issue, e.g.: problem with Mutex lock
+/// - `Ok`: If key was successfully added
 pub fn set_value(info: &RequestInfo) -> RequestResponse {
     // Response will be plain text
     let mut header: HashMap<String, String> = HashMap::new();
@@ -82,7 +104,19 @@ pub fn set_value(info: &RequestInfo) -> RequestResponse {
 
 /// Get value
 /// 
-/// This is called for GET /item/get?name=xxxx request. It returns the value of the key.
+/// This is called for GET request. It returns with all data of single item: last change date, item name, item content
+/// 
+/// ## HTTP variables:
+/// 
+/// - `name`: Name of the item in group
+/// - `group`: Name of the group where the item will be searched
+/// 
+/// ## HTTP returns:
+/// 
+/// - `BadRequest`: If `name` or `group` is/are missing
+/// - `InternalServerError`: If there are some issue, e.g.: problem with Mutex lock
+/// - `NotFound`: Specified item does not exist
+/// - `Ok`: Key is found, return with all details
 pub fn get_value(info: &RequestInfo) -> RequestResponse {
     // Response will be plain text
     let mut header: HashMap<String, String> = HashMap::new();
@@ -114,6 +148,20 @@ pub fn get_value(info: &RequestInfo) -> RequestResponse {
     }
 }
 
+/// List items in a group
+/// 
+/// This is a reaction for a GET request. It return with the item name list which is proper for the filter.
+/// 
+/// ## HTTP variables:
+/// 
+/// - `name`: mask for filter
+/// - `group`: Name of the group where the item will be searched
+/// 
+/// ## HTTP returns:
+/// 
+/// - `BadRequest`: If `name` or `group` is/are missing
+/// - `InternalServerError`: If there are some issue, e.g.: problem with Mutex lock
+/// - `Ok`: Return with item name list. First line is the found number of names, then each line contain one name
 pub fn filter_value(info: &RequestInfo) -> RequestResponse {
     // Response will be plain text
     let mut header: HashMap<String, String> = HashMap::new();
