@@ -25,7 +25,7 @@ use thread_pool::ThreadPool;
 use data_handler::Group;
 use data_handler::Directory;
 
-static DATA: OnceCell<Mutex<Group>> = OnceCell::new();
+static DATA: OnceCell<Mutex<Directory>> = OnceCell::new();
 const BUFFER_SIZE: usize = 4096;
 
 fn main() 
@@ -50,8 +50,9 @@ fn main()
     }
 
     // Initialize data structure to store it
-    let mut data_group = Group::new();
-    let mut_data = DATA.set(Mutex::new(data_group));
+    let mut data_dir = Directory::new();
+    data_dir.add_group("dummy");
+    let mut_data = DATA.set(Mutex::new(data_dir));
     if let Err(_) = mut_data {
         println!("Error during mutex data bind!");
         return;

@@ -31,7 +31,7 @@ impl Directory {
     /// # Return value:
     /// 
     /// Return with `None` if group was already existed. Return with `Some<String>` if group didn't exist where `String` is the name of the group.
-    pub fn add(&mut self, group_name: &str) -> Option<String> {
+    pub fn add_group(&mut self, group_name: &str) -> Option<String> {
         match self.list.get(group_name) {
             Some(_) => return None,
             None => self.list.insert(String::from(group_name), Group::new()),
@@ -62,7 +62,7 @@ impl Directory {
     /// # Return:
     /// 
     /// Return with `None` if no group exist. Else return with `Vec<String>`.
-    pub fn list_all(&self) -> Option<Vec<String>> {
+    pub fn list_all_group(&self) -> Option<Vec<String>> {
         let mut list: LinkedList<String> = LinkedList::new();
         
         for (key, _) in &self.list {
@@ -81,8 +81,25 @@ impl Directory {
     /// # return value:
     /// 
     /// Return with `None` if group does not exist. Else return with `&Group` struct.
-    pub fn get_group(&self, group_name: &str) -> Option<&Group> {
-        return self.list.get(group_name);
+    pub fn get_group(&mut self, group_name: &str) -> Option<&mut Group> {
+        return self.list.get_mut(group_name);
+    }
+
+
+    ///
+    pub fn add_item_onto_group(&mut self, group_name: &str, item_name: &str, value: &str) -> Option<String> {
+        match self.list.get_mut(group_name) {
+            Some(grp) => return grp.insert_or_update(item_name, value),
+            None => return None,
+        }
+    }
+
+    ///
+    pub fn remove_item_from_group(&mut self, group_name: &str, item_name: &str) -> Option<String> {
+        match self.list.get_mut(group_name) {
+            Some(grp) => return grp.delete_from_group(item_name),
+            None => return None,
+        }
     }
 }
 

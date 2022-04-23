@@ -32,18 +32,30 @@ pub fn remove_value(info: &RequestInfo) -> RequestResponse {
         None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing parameter: name")),
     }
 
+    // Save the name of the group
+    let group: String;
+    match info.parameters.get("group") {
+        Some(r) => group = String::from(r),
+        None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing parameter: group")),
+    }
+
     let data_mut = DATA.get();
     match data_mut {
         Some(_) => {
             let mut answer: String;
             {
                 let mut data = data_mut.unwrap().lock().unwrap();
-                match data.delete_from_group(&name[..]) {
-                    Some(v) => answer = v,
-                    None => answer = String::from("Key was not exist"),
+                match data.get_group(&group[..]) {
+                    Some(grp) => {
+                        match grp.delete_from_group(&name[..]) {
+                            Some(v) => answer = v,
+                            None => return RequestResponse::new(HttpResponse::NotAcceptable, header, format!("Specified item ({}) does not exist", name))
+                        }
+                    },
+                    None => return RequestResponse::new(HttpResponse::NotFound, header, format!("Specified group ({}) does not exist", group)),
                 }
-                return RequestResponse::new(HttpResponse::Ok, header, answer);
             }
+            return RequestResponse::new(HttpResponse::Ok, header, answer);
         },
         None => return RequestResponse::new(HttpResponse::InternalServerError, header, String::from("Sorry :-(")),
     }
@@ -51,7 +63,7 @@ pub fn remove_value(info: &RequestInfo) -> RequestResponse {
 
 /// Set value
 /// 
-/// This is called for POST request. This function add new item onto Group structure. If Group does not exist, it create it.
+/// This is called for POST request. This function add new item onto Group structure.
 /// 
 /// ## HTTP variables:
 /// 
@@ -62,6 +74,7 @@ pub fn remove_value(info: &RequestInfo) -> RequestResponse {
 /// 
 /// - `BadRequest`: If `name` or `group` is/are missing
 /// - `InternalServerError`: If there are some issue, e.g.: problem with Mutex lock
+/// - `NotFound`: If specified group does not exist
 /// - `Ok`: If key was successfully added
 pub fn set_value(info: &RequestInfo) -> RequestResponse {
     // Response will be plain text
@@ -73,6 +86,13 @@ pub fn set_value(info: &RequestInfo) -> RequestResponse {
     match info.parameters.get("name") {
         Some(r) => name = String::from(r),
         None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing parameter: name")),
+    }
+
+    // Save the name of the group
+    let group: String;
+    match info.parameters.get("group") {
+        Some(r) => group = String::from(r),
+        None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing parameter: group")),
     }
 
     // Save the value from the body
@@ -88,12 +108,17 @@ pub fn set_value(info: &RequestInfo) -> RequestResponse {
     let data_mut = DATA.get();
     match data_mut {
         Some(_) => {
-            let mut answer: String = String::new();
+            let mut answer: String;
             {
                 let mut data = data_mut.unwrap().lock().unwrap();
-                match data.insert_or_update(&name[..], &value[..]) {
-                    Some(v) => answer = v.clone(),
-                    None => answer = String::from("Key already has this value, no update"),
+                match data.get_group(&group[..]) {
+                    Some(grp) => {
+                        match grp.insert_or_update(&name[..], &value[..]) {
+                            Some(v) => answer = v,
+                            None => return RequestResponse::new(HttpResponse::Ok, header, format!("Specified key ({}->{}) Already exist with same value, no update", group, name)),
+                        }
+                    },
+                    None => return RequestResponse::new(HttpResponse::NotFound, header, format!("Specified group ({}) does not exist", group)),
                 }
             }
             return RequestResponse::new(HttpResponse::Ok, header, answer);
@@ -129,18 +154,30 @@ pub fn get_value(info: &RequestInfo) -> RequestResponse {
         None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing parameter: name")),
     }
 
+    // Save the name of the group
+    let group: String;
+    match info.parameters.get("group") {
+        Some(r) => group = String::from(r),
+        None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing parameter: group")),
+    }
+
     // Try to find data, set response accordingly
     let data_mut = DATA.get();
     match data_mut {
-        Some(r) => {
+        Some(_) => {
             {
                 let mut data = data_mut.unwrap().lock().unwrap();
-                match data.find(&name[..]) {
-                    Some(r) => {
-                        let resp: String = format!("{}\n{}\n{}\n", r.1, r.0, r.2);
-                        return RequestResponse::new(HttpResponse::Ok, header, resp);
+                match data.get_group(&group[..]) {
+                    Some(grp) => {
+                        match grp.find(&name[..]) {
+                            Some(r) => {
+                                let resp: String = format!("{}\n{}\n{}\n", r.1, r.0, r.2);
+                                return RequestResponse::new(HttpResponse::Ok, header, resp);
+                            },
+                            None => return RequestResponse::new(HttpResponse::NotFound, header, String::from("Key was not found")),
+                        }
                     },
-                    None => return RequestResponse::new(HttpResponse::NotFound, header, String::from("Key was not found")),
+                    None => return RequestResponse::new(HttpResponse::NotFound, header, format!("Specified group ({}) does not exist", group)),
                 }
             }
         },
@@ -174,15 +211,27 @@ pub fn filter_value(info: &RequestInfo) -> RequestResponse {
         None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing paramter: name")),
     }
 
+    // Save the name of the group
+    let group: String;
+    match info.parameters.get("group") {
+        Some(r) => group = String::from(r),
+        None => return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing parameter: group")),
+    }
+
     let data_mut = DATA.get();
     match data_mut {
         Some(_) => {
             let mut list: Vec<String>;
             {
                 let mut data = data_mut.unwrap().lock().unwrap();
-                match data.filter(&filter[..]) {
-                    Some(v) => list = v,
-                    None => list = Vec::new(),
+                match data.get_group(&group[..]) {
+                    Some(grp) => {
+                        match grp.filter(&filter[..]) {
+                            Some(v) => list = v,
+                            None => list = Vec::new(),
+                        }
+                    },
+                    None => return RequestResponse::new(HttpResponse::NotFound, header, format!("Specified group ({}) does not exist", group)),
                 }
             }
 
