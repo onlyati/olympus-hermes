@@ -36,7 +36,7 @@ impl Directory {
             Some(_) => return None,
             None => self.list.insert(String::from(group_name), Group::new()),
         };
-        return Some(format!("{}", group_name));
+        return Some(format!("Group ({}) is added", group_name));
     }
 
     /// Drop group
@@ -52,7 +52,7 @@ impl Directory {
     ///  Return with `None` if group didn't exist. Return with `Some<String>` if remove was successful.
     pub fn drop_group(&mut self, group_name: &str) -> Option<String> {
         match self.list.remove(group_name) {
-            Some(_) => return Some(format!("{}", group_name)),
+            Some(_) => return Some(format!("Group ({}) is dropped", group_name)),
             None => return None,
         }
     }
@@ -83,23 +83,6 @@ impl Directory {
     /// Return with `None` if group does not exist. Else return with `&Group` struct.
     pub fn get_group(&mut self, group_name: &str) -> Option<&mut Group> {
         return self.list.get_mut(group_name);
-    }
-
-
-    ///
-    pub fn add_item_onto_group(&mut self, group_name: &str, item_name: &str, value: &str) -> Option<String> {
-        match self.list.get_mut(group_name) {
-            Some(grp) => return grp.insert_or_update(item_name, value),
-            None => return None,
-        }
-    }
-
-    ///
-    pub fn remove_item_from_group(&mut self, group_name: &str, item_name: &str) -> Option<String> {
-        match self.list.get_mut(group_name) {
-            Some(grp) => return grp.delete_from_group(item_name),
-            None => return None,
-        }
     }
 }
 

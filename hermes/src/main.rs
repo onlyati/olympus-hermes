@@ -1,4 +1,5 @@
 mod item;
+mod group;
 mod thread_pool;
 mod data_handler;
 
@@ -51,7 +52,6 @@ fn main()
 
     // Initialize data structure to store it
     let mut data_dir = Directory::new();
-    data_dir.add_group("dummy");
     let mut_data = DATA.set(Mutex::new(data_dir));
     if let Err(_) = mut_data {
         println!("Error during mutex data bind!");
@@ -64,6 +64,9 @@ fn main()
     endpoints.add("/item", EndPointType::POST, item::set_value);
     endpoints.add("/item", EndPointType::DELETE, item::remove_value);
     endpoints.add("/filter", EndPointType::GET, item::filter_value);
+    endpoints.add("/group", EndPointType::GET, group::list_group);
+    endpoints.add("/group", EndPointType::POST, group::add_group);
+    endpoints.add("/group", EndPointType::DELETE, group::drop_group);
 
     // Setup Threadpool
     if !config.contains_key("threads") {
