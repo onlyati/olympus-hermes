@@ -2,8 +2,91 @@ use std::collections::HashMap;
 use std::collections::LinkedList;
 use chrono::{Datelike, Timelike, Utc};
 
-pub struct Group
-{
+pub struct Directory {
+    list: HashMap<String, Group>,
+}
+
+impl Directory {
+    /// Create new directory structure
+    /// 
+    /// Directory contains `Group` elements which hold the content.
+    /// 
+    /// # Return value:
+    /// 
+    /// Initialized Directory structure
+    pub fn new() -> Directory {
+        Directory {
+            list: HashMap::new(),
+        }
+    }
+
+    /// Add new group onto directory
+    /// 
+    /// This function add new group onto directory if that group does not exist already.
+    /// 
+    /// # Input(s):
+    /// 
+    /// - Name of the group
+    /// 
+    /// # Return value:
+    /// 
+    /// Return with `None` if group was already existed. Return with `Some<String>` if group didn't exist where `String` is the name of the group.
+    pub fn add(&mut self, group_name: &str) -> Option<String> {
+        match self.list.get(group_name) {
+            Some(_) => return None,
+            None => self.list.insert(String::from(group_name), Group::new()),
+        };
+        return Some(format!("{}", group_name));
+    }
+
+    /// Drop group
+    /// 
+    /// This function delete a whole group.
+    /// 
+    /// # Input(s):
+    /// 
+    /// - Name of the group
+    /// 
+    /// # Return value:
+    /// 
+    ///  Return with `None` if group didn't exist. Return with `Some<String>` if remove was successful.
+    pub fn drop_group(&mut self, group_name: &str) -> Option<String> {
+        match self.list.remove(group_name) {
+            Some(_) => return Some(format!("{}", group_name)),
+            None => return None,
+        }
+    }
+
+    /// List all groups
+    /// 
+    /// # Return:
+    /// 
+    /// Return with `None` if no group exist. Else return with `Vec<String>`.
+    pub fn list_all(&self) -> Option<Vec<String>> {
+        let mut list: LinkedList<String> = LinkedList::new();
+        
+        for (key, _) in &self.list {
+            list.push_back(String::from(&key[..]));
+        }
+
+        return convert_to_vec_string(list);
+    }
+
+    /// Get group
+    /// 
+    /// # Input(s):
+    /// 
+    /// - Name fo the group
+    /// 
+    /// # return value:
+    /// 
+    /// Return with `None` if group does not exist. Else return with `&Group` struct.
+    pub fn get_group(&self, group_name: &str) -> Option<&Group> {
+        return self.list.get(group_name);
+    }
+}
+
+pub struct Group {
     content: HashMap<String, Item>,
 }
 
@@ -13,17 +96,11 @@ impl Group
     ///
     /// This function initialize a new structure
     ///
-    /// # Input(s):
-    ///
-    /// - Name of the group
-    ///
     /// # Return value:
     ///
     /// Group sturcture.
-    pub fn new() -> Group
-    {
-        Group
-        {
+    pub fn new() -> Group {
+        Group {
             content: HashMap::new(),
         }
     }
@@ -39,8 +116,7 @@ impl Group
     /// # Return:
     ///
     /// It returns a Tuple which is within Option. If no key was found, it returns with None, else it returns with Some<(String, String, String)>.
-    pub fn find(&self, item_name: &str) -> Option<(String, String, String)>
-    {
+    pub fn find(&self, item_name: &str) -> Option<(String, String, String)> {
         match self.content.get(item_name) {
             Some(v) => return Option::Some((item_name.to_string(), v.last_update.clone(), v.content.clone())),
             None => return Option::None,
@@ -58,8 +134,7 @@ impl Group
     /// # Return value:
     ///
     /// Returns with a vector which contains a String elements.
-    pub fn filter(&self, name_chunk: &str) -> Option<Vec<String>>
-    {
+    pub fn filter(&self, name_chunk: &str) -> Option<Vec<String>> {
         let mut output_list: LinkedList<String> = LinkedList::new();
 
         let chunk_length = name_chunk.len();
@@ -156,7 +231,7 @@ impl Group
     /// # Return
     /// 
     /// Result, depends that remove was successful or not
-    pub fn delete(&mut self, item_name: &str) -> Option<String> {
+    pub fn delete_from_group(&mut self, item_name: &str) -> Option<String> {
         match self.content.remove(item_name) {
             Some(_) => return Some(format!("Item ({}) is deleted", item_name)),
             None => return None,
@@ -164,18 +239,14 @@ impl Group
     }
 }
 
-struct Item
-{
+struct Item {
     last_update: String,
     content: String,
 }
 
-impl Item
-{
-    fn new(date_time_now: String, content: String) -> Item
-    {
-        Item
-        {
+impl Item {
+    fn new(date_time_now: String, content: String) -> Item {
+        Item {
             last_update: date_time_now,
             content: content,
         }
