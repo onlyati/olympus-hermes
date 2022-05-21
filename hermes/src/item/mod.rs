@@ -174,10 +174,10 @@ pub fn get_value(info: &RequestInfo) -> RequestResponse {
                                 let resp: String = format!("{}\n{}\n{}\n", r.1, r.0, r.2);
                                 return RequestResponse::new(HttpResponse::Ok, header, resp);
                             },
-                            None => return RequestResponse::new(HttpResponse::NotFound, header, String::from("Key was not found")),
+                            None => return RequestResponse::new(HttpResponse::NoContent, header, String::from("")),
                         }
                     },
-                    None => return RequestResponse::new(HttpResponse::NotFound, header, format!("Specified group ({}) does not exist", group)),
+                    None => return RequestResponse::new(HttpResponse::NoContent, header, String::from("")),
                 }
             }
         },
