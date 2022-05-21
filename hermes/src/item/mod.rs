@@ -5,6 +5,7 @@ use onlyati_http::parser::RequestInfo;
 use onlyati_http::parser::RequestResponse;
 
 use crate::DATA;
+use crate::debug;
 
 /// Delete value
 /// 
@@ -100,7 +101,7 @@ pub fn set_value(info: &RequestInfo) -> RequestResponse {
     if !info.body.trim().is_empty() {
         value = String::from(info.body.trim());
     }
-    else {
+    else {        
         return RequestResponse::new(HttpResponse::BadRequest, header, String::from("Missing in body: value of key"));
     }
 

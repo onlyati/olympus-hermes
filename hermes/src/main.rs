@@ -5,10 +5,13 @@ mod data_handler;
 
 use std::env;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::process::Command;
 use std::collections::HashMap;
+
+use std::{thread, time};
 
 use onlyati_http::parser::HttpResponse;
 use onlyati_http::parser::EndPointType;
@@ -31,12 +34,16 @@ const BUFFER_SIZE: usize = 4096;
 
 fn main() 
 {
+    debug(String::from("Debug is on"));
+
     // Read the arguments and parse it onto a structure
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         println!("Config path must be specified as parameter!");
         return;
     }
+
+    debug(format!("Used configuration file: {}", args[1]));
 
     // Read configuration from file
     let config_tmp = onlyati_config::read_config(args[1].as_str());
@@ -125,6 +132,9 @@ fn main()
 /// 3. Calling execution for endpoints
 /// 4. Send the request back to the caller
 fn handle_request(mut stream: TcpStream, endpoints: Arc<Mutex<EndPointCollection>>) {
+     let wait_time = time::Duration::from_nanos(50);
+    thread::sleep(wait_time);
+
     let mut incoming_data: String = String::new();
     let mut buffer_count: usize = BUFFER_SIZE;
     
@@ -137,6 +147,7 @@ fn handle_request(mut stream: TcpStream, endpoints: Arc<Mutex<EndPointCollection
                 buffer_count = r;
             },
             Err(_) => {
+                debug(format!("Error during reading from steam. Readed data: {}", incoming_data));
                 let mut header: HashMap<String, String> = HashMap::new();
                 header.insert(String::from("Content-Type"), String::from("plain/text"));
                 let response = RequestResponse::new(HttpResponse::InternalServerError, header, String::from("Sorry :-("));
@@ -150,7 +161,13 @@ fn handle_request(mut stream: TcpStream, endpoints: Arc<Mutex<EndPointCollection
     let mut response = RequestResponse::new(HttpResponse::BadRequest, HashMap::new(), String::from(""));
 
     let infos = RequestInfo::new(&incoming_data[..]);
+
     if let Some(info) = infos {
+        if info.body == "" {
+            debug(format!(">>>>> Itt volt a gond"));
+            debug(format!("{}", incoming_data));
+            debug(format!("------------------------------"));
+        }
         // If parse was successful, then find endpoint for it
         {
             let endp = endpoints.lock().unwrap();
@@ -196,4 +213,11 @@ fn number_of_cpu_threads() -> usize {
     }
     let count: usize = output.parse::<usize>().expect(format!("Could not parse CPU thread count onto number: [{}]", output).as_str());
     count
+}
+
+fn debug(text: String) {
+    match env::var("HERMES_DEBUG") {
+        Ok(_) => println!("{}", text),
+        Err(_) => (),
+    }
 }

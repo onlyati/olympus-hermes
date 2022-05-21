@@ -2,10 +2,13 @@
 
 import sys
 import requests as req
+import http.client
 import urllib3
 urllib3.disable_warnings()
 
 valid_actions = ["get-item", "set-item", "rem-item", "filter-item", "list-groups", "create-group", "rem-group"]
+
+# http.client.HTTPConnection.debuglevel = 5
 
 #
 # Verify that we have at least enough input parameters
@@ -93,10 +96,7 @@ resp = ""
 if http_type == "get":
     resp = req.get(http_url)
 elif http_type == "post":
-    try:
-        resp = req.post(http_url, data = value)
-    except:
-        print("Response:", resp)
+    resp = req.post(http_url, data = value, stream=False)
 elif http_type == "delete":
     resp = req.delete(http_url)
 else:

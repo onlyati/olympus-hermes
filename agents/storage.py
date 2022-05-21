@@ -43,9 +43,9 @@ for line in fsystems_lines:
     current_point = line_content[len(line_content) - 1]
     if current_point in mount_points:
         key = "storage/" + socket.gethostname() + "." + mount_names[mount_points.index(current_point)] + ".total"
-        subprocess.call([os.environ["PWD"] + "/hermes_cli.py", "set-item", key, line_content[2]], stdout=subprocess.DEVNULL)
+        subprocess.call([os.environ["PWD"] + "/hermes_cli.py", "set-item", key, line_content[2]])
 
         key = "storage/" + socket.gethostname() + "." + mount_names[mount_points.index(current_point)] + ".used"
-        subprocess.call([os.environ["PWD"] + "/hermes_cli.py", "set-item", key, line_content[3]], stdout=subprocess.DEVNULL)
+        subprocess.call([os.environ["PWD"] + "/hermes_cli.py", "set-item", key, line_content[3]])
 
 
