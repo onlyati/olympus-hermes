@@ -93,7 +93,10 @@ resp = ""
 if http_type == "get":
     resp = req.get(http_url)
 elif http_type == "post":
-    resp = req.post(http_url, data = value)
+    try:
+        resp = req.post(http_url, data = value)
+    except:
+        print("Response:", resp)
 elif http_type == "delete":
     resp = req.delete(http_url)
 else:
