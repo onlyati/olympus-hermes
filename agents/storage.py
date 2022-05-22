@@ -20,11 +20,11 @@ else:
 #
 # Check that storage category exist, if does not create
 #
-groups = os.popen(os.environ["PWD"] + "/hermes_cli.py list-groups").read()
+groups = os.popen("/usr/local/bin/hermes-cli list-groups").read()
 groups_list = groups.split("\n")
 
 if "storage" not in groups_list:
-    rc = subprocess.call([os.environ["PWD"] + "/hermes_cli.py", "create-group", "storage"], stdout=subprocess.DEVNULL)
+    rc = subprocess.call(["/usr/local/bin/hermes-cli", "create-group", "storage"], stdout=subprocess.DEVNULL)
     if rc != 0:
         print("Error during storage group creation, exit 1")
         exit(1)
@@ -43,9 +43,9 @@ for line in fsystems_lines:
     current_point = line_content[len(line_content) - 1]
     if current_point in mount_points:
         key = "storage/" + socket.gethostname() + "." + mount_names[mount_points.index(current_point)] + ".total"
-        subprocess.call([os.environ["PWD"] + "/hermes_cli.py", "set-item", key, line_content[2]])
+        subprocess.call(["/usr/local/bin/hermes-cli", "set-item", key, line_content[2]])
 
         key = "storage/" + socket.gethostname() + "." + mount_names[mount_points.index(current_point)] + ".used"
-        subprocess.call([os.environ["PWD"] + "/hermes_cli.py", "set-item", key, line_content[3]])
+        subprocess.call(["/usr/local/bin/hermes-cli", "set-item", key, line_content[3]])
 
 

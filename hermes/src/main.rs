@@ -132,27 +132,76 @@ fn main()
 /// 3. Calling execution for endpoints
 /// 4. Send the request back to the caller
 fn handle_request(mut stream: TcpStream, endpoints: Arc<Mutex<EndPointCollection>>) {
-     let wait_time = time::Duration::from_nanos(50);
-    thread::sleep(wait_time);
-
+    stream.set_read_timeout(Some(time::Duration::new(0, 100))).unwrap();
     let mut incoming_data: String = String::new();
-    let mut buffer_count: usize = BUFFER_SIZE;
+    let mut read_done: bool = false;
+
+    let mut prepare_check: bool = false;
+    let mut check_data: bool = false;
+    let mut seq: i32 = 0;
     
-    while buffer_count == BUFFER_SIZE {
+    while !read_done {
         let mut buffer = [0; BUFFER_SIZE];
         buffer.fill(0x00);
         match stream.read(&mut buffer) {
+            Ok(0) => read_done = true,
             Ok(r) => {
+                seq = seq + 1;
+                debug(format!("{}", seq));
+                if seq == 2 {
+                    incoming_data = incoming_data + "\r\n\r\n";
+                    check_data = true;
+                }
                 incoming_data = incoming_data + String::from_utf8_lossy(&buffer[0..r]).trim();
-                buffer_count = r;
+
+                debug(format!("Request from OK:\nb{}", incoming_data));
+
+                let mut lines = incoming_data.lines();
+        
+                for line in lines {
+                    if line.starts_with("GET") || line.starts_with("DELETE") {
+                        // No need to check content for some requests, they only have header
+                        read_done = true;
+                    }
+
+                    if line.starts_with("Content-Length:") {
+                        let parse: Vec<&str> = line.split(": ").collect();
+                        if parse[1] == "0" {
+                            read_done = true;
+                        }
+                        else {
+                            prepare_check = true;
+                        }
+                    }
+
+                    if check_data {
+                        read_done = true;
+                    }
+
+                    if line.is_empty() && prepare_check == true {
+                        check_data = true;
+                    }
+                }
+            },
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                debug(format!("Sequence: {}", seq));
+                debug(format!("{} - {}", prepare_check, check_data));
+                debug(format!("Request from Err:\n[{}]", incoming_data));
+
+                let mut header: HashMap<String, String> = HashMap::new();
+                header.insert(String::from("Content-Type"), String::from("plain/text"));
+                let response = RequestResponse::new(HttpResponse::LenghtRequired, header, String::from("Content-Length could not determined"));
+                stream.write(response.print().as_bytes()).unwrap();
+                stream.flush().unwrap();
+                return;
             },
             Err(_) => {
-                debug(format!("Error during reading from steam. Readed data: {}", incoming_data));
                 let mut header: HashMap<String, String> = HashMap::new();
                 header.insert(String::from("Content-Type"), String::from("plain/text"));
                 let response = RequestResponse::new(HttpResponse::InternalServerError, header, String::from("Sorry :-("));
                 stream.write(response.print().as_bytes()).unwrap();
                 stream.flush().unwrap();
+                return;
             },
         }
     }
