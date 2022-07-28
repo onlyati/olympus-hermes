@@ -1,11 +1,9 @@
 use std::env;
-use std::net::TcpListener;
-use std::process::Command;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
-mod thread_pool;
-
-use thread_pool::ThreadPool;
+mod services;
+use services::data::Database;
 
 fn main() 
 {
@@ -28,8 +26,79 @@ fn main()
         },
     }
 
-    
+    println!("Settings:");
+    for setting in &config {
+        println!("{} -> {}", setting.0, setting.1);
+    }
 
-    // End of Hermes
-    println!("Hermes is shutting down...");
+    let mut db = Database::new();
+    let _ = db.create_table(String::from("Xerxes"));
+    let _ = db.create_table(String::from("Xerxes"));
+    let _ = db.create_table(String::from("Elemér"));
+    let _ = db.create_table(String::from("Elemér"));
+    let _ = db.create_table(String::from("Dénes"));
+    let _ = db.create_table(String::from("Cecil"));
+    let _ = db.create_table(String::from("Béla"));
+    let _ = db.create_table(String::from("Badacsony"));
+
+    match db.select_table_mut("Elemér") {
+        Some(table) => {
+            table.insert_or_update("Teszt1", "Én vagyok az érték");
+            table.insert_or_update("Mambo No 5", "I will survive");
+            table.insert_or_update("Teszt2", "Én is érték vagyok");
+            table.insert_or_update("Teszt3", "Én is, én is!");
+        },
+        None => (),
+    }
+
+    match db.select_table_mut("Cecil") {
+        Some(table) => {
+            table.insert_or_update("Teszt1", "Hehe, én Cecilben vagyok");
+        },
+        None => (),
+    }
+
+    match db.select_table_mut("Elemér") {
+        Some(table) => {
+            table.insert_or_update("Teszt2", "Én most úgy felülírlak");
+        },
+        None => (),
+    }
+
+    for table in db.get_tables() {
+        match db.select_table(table.get_name()) {
+            Some(table) => {
+                let records = table.filter(|_| {true});
+                for record in records {
+                    println!("{} => {}", table.get_name(), record);
+                }
+            },
+            None => (),
+        }
+    }
+
+    println!("-------------------------------------------------");
+
+    match db.select_table_mut("Elemér") {
+        Some(table) => {
+            match table.remove(|key| {key.starts_with("Teszt")}) {
+                Some(count) => println!("{} element is deleted", count),
+                None => println!("0 element is deleted"),
+            }
+        },
+        None => (),
+    }
+
+    for table in db.get_tables() {
+        match db.select_table(table.get_name()) {
+            Some(table) => {
+                let records = table.filter(|_| {true});
+                for record in records {
+                    println!("{} => {}", table.get_name(), record);
+                }
+            },
+            None => (),
+        }
+    }
+    
 }
