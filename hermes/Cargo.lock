@@ -26,9 +26,7 @@ name = "hermes"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "once_cell",
  "onlyati_config",
- "onlyati_http",
 ]
 
 [[package]]
@@ -57,29 +55,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "once_cell"
-version = "1.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87f3e037eac156d1775da914196f0f37741a274155e34a0b7e427c35d2a2ecb9"
-
-[[package]]
 name = "onlyati_config"
 version = "0.1.0"
 source = "git+https://gitlab.atihome.lan/rust-libs/onlyati-config?tag=latest#6788b32f01b07e9defb23a6055062d75e19ba2f2"
-
-[[package]]
-name = "onlyati_http"
-version = "0.1.0"
-source = "git+https://gitlab.atihome.lan/rust-libs/onlyati-http?tag=latest#045a7f9057b86a22ea70f91f33167fb8e1aabc21"
-dependencies = [
- "percent-encoding",
-]
-
-[[package]]
-name = "percent-encoding"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "time"
