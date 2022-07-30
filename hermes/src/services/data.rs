@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+use std::fmt;
+
 /// Database struture
 /// 
 /// This is the primary structure for database. A Database consist of set of tables.
@@ -18,6 +20,22 @@ impl Database {
     /// Return with an iterable vector about tables
     pub fn get_tables(&self) -> &Vec<Table> {
         return &self.tables;
+    }
+
+    /// Filter tables based on input function
+    pub fn filter_tables<F>(&self, filter_func: F) -> Vec<&Table>
+    where
+        F: Fn(&str) -> bool,
+    {
+        let mut collected: Vec<&Table> = Vec::new();
+
+        for table in &self.tables {
+            if filter_func(table.get_name()) {
+                collected.push(table);
+            }
+        }
+
+        return collected;
     }
 
     /// Create new table
@@ -87,8 +105,7 @@ impl Database {
         let mut high: i32 = (self.tables.len() as i32) - 1;
 
         while low <= high {
-            // let mid: usize = low + ((high - low) / 2);
-            let mid = (high + low) / 2;
+            let mid: i32 = low + ((high - low) / 2);
             let mid_value = &self.tables[mid as usize];
 
             if mid_value.get_name() < name {
@@ -141,11 +158,14 @@ impl Table {
     }
 
     /// Filter table records based on an input function
-    pub fn filter<F>(&self, key_filter: F) -> Vec<Record> where F: Fn(&str) -> bool {
+    pub fn filter<F>(&self, key_filter: F) -> Vec<Record> 
+    where 
+        F: Fn(&Record) -> bool, 
+    {
         let mut collected: Vec<Record> = Vec::new();
 
         for record in &self.data {
-            if key_filter(record.get_key()) {
+            if key_filter(record) {
                 collected.push(record.clone());
             }
         }
@@ -153,13 +173,14 @@ impl Table {
         return collected;
     }
 
-    // Remove the selected elements
-    pub fn remove<F>(&mut self, remove_filter: F) -> Option<usize> where F: Fn(&str) -> bool {
+    /// Remove the selected elements
+    pub fn remove<F>(&mut self, remove_filter: F) -> Option<usize> 
+    where F: Fn(&Record) -> bool {
         let mut remove_list: Vec<usize> = Vec::new();
 
         let mut index: usize = 0;
         for record in &self.data {
-            if remove_filter(record.get_key()) {
+            if remove_filter(record) {
                 remove_list.push(index);
             }
             index += 1;
@@ -176,6 +197,36 @@ impl Table {
         }
 
         return Some(index);
+    }
+
+    /// Convert the Record into another type
+    pub fn select<F, T>(&self, select_func: F) -> Vec<T> 
+    where 
+        F: Fn(&Record) -> Option<T>,
+    {
+        let mut result: Vec<T> = Vec::new();
+
+        for record in &self.data {
+            if let Some(output) = select_func(record) {
+                result.push(output);
+            }
+        }
+
+        return result;
+    }
+}
+
+impl fmt::Display for Table {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut final_text = String::new();
+        for record in &self.data {
+            final_text += record.get_key();
+            final_text += ";";
+            final_text += record.get_value();
+            final_text += ";";
+            final_text += "\n";
+        }
+        return write!(f, "{}", final_text);
     }
 }
 
@@ -202,9 +253,8 @@ impl Record {
     }
 }
 
-impl std::fmt::Display for Record {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // Customize so only `x` and `y` are denoted.
-        return write!(f, "{}, {}", self.key, self.value);
+impl fmt::Display for Record {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        return write!(f, "{};{};", self.key, self.value);
     }
 }

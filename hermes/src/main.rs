@@ -1,9 +1,9 @@
 use std::env;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 mod services;
 use services::data::Database;
+use services::process::Pool;
 
 fn main() 
 {
@@ -31,74 +31,12 @@ fn main()
         println!("{} -> {}", setting.0, setting.1);
     }
 
-    let mut db = Database::new();
-    let _ = db.create_table(String::from("Xerxes"));
-    let _ = db.create_table(String::from("Xerxes"));
-    let _ = db.create_table(String::from("Elemér"));
-    let _ = db.create_table(String::from("Elemér"));
-    let _ = db.create_table(String::from("Dénes"));
-    let _ = db.create_table(String::from("Cecil"));
-    let _ = db.create_table(String::from("Béla"));
-    let _ = db.create_table(String::from("Badacsony"));
+    let pool = Pool::new(4).unwrap();
 
-    match db.select_table_mut("Elemér") {
-        Some(table) => {
-            table.insert_or_update("Teszt1", "Én vagyok az érték");
-            table.insert_or_update("Mambo No 5", "I will survive");
-            table.insert_or_update("Teszt2", "Én is érték vagyok");
-            table.insert_or_update("Teszt3", "Én is, én is!");
-        },
-        None => (),
-    }
-
-    match db.select_table_mut("Cecil") {
-        Some(table) => {
-            table.insert_or_update("Teszt1", "Hehe, én Cecilben vagyok");
-        },
-        None => (),
-    }
-
-    match db.select_table_mut("Elemér") {
-        Some(table) => {
-            table.insert_or_update("Teszt2", "Én most úgy felülírlak");
-        },
-        None => (),
-    }
-
-    for table in db.get_tables() {
-        match db.select_table(table.get_name()) {
-            Some(table) => {
-                let records = table.filter(|_| {true});
-                for record in records {
-                    println!("{} => {}", table.get_name(), record);
-                }
-            },
-            None => (),
-        }
-    }
-
-    println!("-------------------------------------------------");
-
-    match db.select_table_mut("Elemér") {
-        Some(table) => {
-            match table.remove(|key| {key.starts_with("Teszt")}) {
-                Some(count) => println!("{} element is deleted", count),
-                None => println!("0 element is deleted"),
-            }
-        },
-        None => (),
-    }
-
-    for table in db.get_tables() {
-        match db.select_table(table.get_name()) {
-            Some(table) => {
-                let records = table.filter(|_| {true});
-                for record in records {
-                    println!("{} => {}", table.get_name(), record);
-                }
-            },
-            None => (),
-        }
-    }
+    pool.execute(String::from("Hello")).unwrap();
+    pool.execute(String::from("Hogy vagy?")).unwrap();
+    pool.execute(String::from("ASDasdASD")).unwrap();
+    pool.execute(String::from("Huehuehue")).unwrap();
+    pool.execute(String::from("Cecília")).unwrap();
     
 }
