@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 use std::fmt;
+use std::collections::BTreeMap;
+use std::ops::Bound::Included;
 
 /// Database struture
 /// 
@@ -129,7 +131,7 @@ impl Database {
 /// A table consist of `Record` elements.
 pub struct Table {
     name: String,
-    data: Vec<Record>,
+    data: BTreeMap<String, String>,
 }
 
 impl Table {
@@ -137,7 +139,7 @@ impl Table {
     fn new(name: String) -> Table {
         return Table {
             name: name,
-            data: Vec::new(),
+            data: BTreeMap::new(),
         }
     }
 
@@ -148,27 +150,45 @@ impl Table {
 
     /// Create new row or update currently exists record
     pub fn insert_or_update(&mut self, key: &str, value: &str) {
-        let record = Record::new(String::from(key), String::from(value));        
-        match self.find_next_index(key) {
-            Some(index) => {
-                self.data.insert(index, record)
-            },
-            None => {
-                self.data.push(record);
+        self.data.insert(String::from(key), String::from(value));
+    }
+
+    /// Get value for specific key
+    pub fn get_value(&self, key: &str) -> Option<&String> {
+        return self.data.get(key);
+    }
+
+    pub fn key_start_with(&self, start_with: &str) -> Vec<&String> {
+        let mut collected: Vec<&String> = Vec::new();
+
+        let start_with1 = String::from(start_with);
+        let start_with2 = String::from(start_with);
+        for record in self.data.range(start_with1..) {
+            if start_with2.len() <= record.0.len() {
+                let len = start_with2.len();
+                if &record.0[0..len] != &start_with2[..] {
+                    break;
+                }
             }
+            else {
+                break;
+            }
+            collected.push(record.0);
         }
+
+        return collected;
     }
 
     /// Filter table records based on an input function
-    pub fn filter<F>(&self, key_filter: F) -> Vec<Record> 
+    pub fn filter_keys<F>(&self, key_filter: F) -> Vec<&String> 
     where 
-        F: Fn(&Record) -> bool, 
+        F: Fn(&String) -> bool,
     {
-        let mut collected: Vec<Record> = Vec::new();
+        let mut collected: Vec<&String> = Vec::new();
 
         for record in &self.data {
-            if key_filter(record) {
-                collected.push(record.clone());
+            if key_filter(record.0) {
+                collected.push(record.0);
             }
         }
 
@@ -177,13 +197,13 @@ impl Table {
 
     /// Remove the selected elements
     pub fn remove<F>(&mut self, remove_filter: F) -> Option<usize> 
-    where F: Fn(&Record) -> bool {
-        let mut remove_list: Vec<usize> = Vec::new();
+    where F: Fn(&String) -> bool {
+        let mut remove_list: Vec<String> = Vec::new();
 
         let mut index: usize = 0;
-        for record in &self.data {
-            if remove_filter(record) {
-                remove_list.push(index);
+        for record in &mut self.data {
+            if remove_filter(record.0) {
+                remove_list.push(record.0.clone());
             }
             index += 1;
         }
@@ -193,8 +213,8 @@ impl Table {
         }
 
         index = 0;
-        for i in (0..remove_list.len()).rev() {
-            self.data.remove(remove_list[i]);
+        for key in remove_list {
+            self.data.remove(&key);
             index += 1;
         }
 
@@ -204,62 +224,17 @@ impl Table {
     /// Convert the Record into another type
     pub fn select<F, T>(&self, select_func: F) -> Vec<T> 
     where 
-        F: Fn(&Record) -> Option<T>,
+        F: Fn(&String, &String) -> Option<T>,
     {
         let mut result: Vec<T> = Vec::new();
 
         for record in &self.data {
-            if let Some(output) = select_func(record) {
+            if let Some(output) = select_func(record.0, record.1) {
                 result.push(output);
             }
         }
 
         return result;
-    }
-
-    fn find_next_index(&self, name: &str) -> Option<usize> {
-        let mut low: i32 = 0;
-        let mut high: i32 = (self.data.len() as i32) - 1;
-        let mut mid: i32 = low + ((high - low) / 2);
-
-        while low <= high {
-            mid = low + ((high - low) / 2);
-            let mid_value = &self.data[mid as usize];
-
-            if mid_value.get_key() < name {
-                low = mid + 1;
-            }
-            else if mid_value.get_key() > name {
-                high = mid - 1;
-            }
-            else {
-                return Some(mid as usize);
-            }
-        }
-
-        return Some(mid as usize);
-    }
-
-    fn find_record_index(&self, name: &str) -> Option<usize> {
-        let mut low: i32 = 0;
-        let mut high: i32 = (self.data.len() as i32) - 1;
-
-        while low <= high {
-            let mid: i32 = low + ((high - low) / 2);
-            let mid_value = &self.data[mid as usize];
-
-            if mid_value.get_key() < name {
-                low = mid + 1;
-            }
-            else if mid_value.get_key() > name {
-                high = mid - 1;
-            }
-            else {
-                return Some(mid as usize);
-            }
-        }
-
-        return None;
     }
 }
 
@@ -267,41 +242,12 @@ impl fmt::Display for Table {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut final_text = String::new();
         for record in &self.data {
-            final_text += record.get_key();
+            final_text += record.0;
             final_text += ";";
-            final_text += record.get_value();
+            final_text += record.1;
             final_text += ";";
             final_text += "\n";
         }
         return write!(f, "{}", final_text);
-    }
-}
-
-/// Record structure
-/// 
-/// A record consist from a `key` and a `values`
-#[derive(Clone)]
-pub struct Record {
-    key: String,
-    value: String,
-}
-
-impl Record {
-    fn new(key: String, value: String) -> Record {
-        return Record { key: key, value: value }
-    }
-
-    pub fn get_key(&self) -> &str {
-        return &self.key[..];
-    }
-
-    pub fn get_value(&self) -> &str {
-        return &self.value[..];
-    }
-}
-
-impl fmt::Display for Record {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        return write!(f, "{};{};", self.key, self.value);
     }
 }
