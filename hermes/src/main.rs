@@ -5,6 +5,8 @@ mod services;
 use services::data::Database;
 use services::process::Pool;
 
+use std::time::Instant;
+
 fn main() 
 {
     // Read the arguments and parse it onto a structure
@@ -31,12 +33,26 @@ fn main()
         println!("{} -> {}", setting.0, setting.1);
     }
 
-    let pool = Pool::new(4).unwrap();
+    let mut db = Database::new();
+    db.create_table(String::from("Teszt1")).unwrap();
+    
+    match db.select_table_mut("Teszt1") {
+        Some(table) => {
+            for x in 0..100 {
+                let upper_limit = x * 1_000;
 
-    pool.execute(String::from("Hello")).unwrap();
-    pool.execute(String::from("Hogy vagy?")).unwrap();
-    pool.execute(String::from("ASDasdASD")).unwrap();
-    pool.execute(String::from("Huehuehue")).unwrap();
-    pool.execute(String::from("Cecília")).unwrap();
+                let now = Instant::now();
+                for i in (0..upper_limit).rev() {
+                    table.insert_or_update(format!("{}", i).as_str(), "Teszt value is here");
+                    // table.insert_or_update("Update teszt", "Teszt value is here");
+                }
+                let elapsed = now.elapsed();
+                println!("Elapsed time for {} inserts:\t {:.2?}", upper_limit, elapsed);
+
+                table.remove(|_| {true});
+            }
+        },
+        None => (),
+    }
     
 }

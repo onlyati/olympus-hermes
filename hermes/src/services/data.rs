@@ -148,13 +148,15 @@ impl Table {
 
     /// Create new row or update currently exists record
     pub fn insert_or_update(&mut self, key: &str, value: &str) {
-        for record in &mut self.data {
-            if record.key == key {
-                record.value = String::from(value);
-                return;
+        let record = Record::new(String::from(key), String::from(value));        
+        match self.find_next_index(key) {
+            Some(index) => {
+                self.data.insert(index, record)
+            },
+            None => {
+                self.data.push(record);
             }
         }
-        self.data.push(Record::new(String::from(key), String::from(value)));
     }
 
     /// Filter table records based on an input function
@@ -192,7 +194,7 @@ impl Table {
 
         index = 0;
         for i in (0..remove_list.len()).rev() {
-            self.data.swap_remove(remove_list[i]);
+            self.data.remove(remove_list[i]);
             index += 1;
         }
 
@@ -213,6 +215,51 @@ impl Table {
         }
 
         return result;
+    }
+
+    fn find_next_index(&self, name: &str) -> Option<usize> {
+        let mut low: i32 = 0;
+        let mut high: i32 = (self.data.len() as i32) - 1;
+        let mut mid: i32 = low + ((high - low) / 2);
+
+        while low <= high {
+            mid = low + ((high - low) / 2);
+            let mid_value = &self.data[mid as usize];
+
+            if mid_value.get_key() < name {
+                low = mid + 1;
+            }
+            else if mid_value.get_key() > name {
+                high = mid - 1;
+            }
+            else {
+                return Some(mid as usize);
+            }
+        }
+
+        return Some(mid as usize);
+    }
+
+    fn find_record_index(&self, name: &str) -> Option<usize> {
+        let mut low: i32 = 0;
+        let mut high: i32 = (self.data.len() as i32) - 1;
+
+        while low <= high {
+            let mid: i32 = low + ((high - low) / 2);
+            let mid_value = &self.data[mid as usize];
+
+            if mid_value.get_key() < name {
+                low = mid + 1;
+            }
+            else if mid_value.get_key() > name {
+                high = mid - 1;
+            }
+            else {
+                return Some(mid as usize);
+            }
+        }
+
+        return None;
     }
 }
 
