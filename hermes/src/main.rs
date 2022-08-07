@@ -1,11 +1,14 @@
 use std::env;
 use std::collections::HashMap;
+use std::time::Instant;
+use std::sync::{Arc, Mutex, RwLock};
 
 mod services;
 use services::data::Database;
 use services::process::Pool;
 
-use std::time::Instant;
+use crate::services::data::Table;
+
 
 fn main() 
 {
@@ -47,7 +50,7 @@ fn main()
     for table in db.get_tables() {
         println!("{}", table.get_name());
     }
-
+    
     println!("-----------------------------");
     db.drop_table("Teszt2").unwrap();
 
@@ -121,5 +124,4 @@ fn main()
         },
         None => (),
     }
-    
 }

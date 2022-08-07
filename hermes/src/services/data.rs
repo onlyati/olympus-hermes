@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::fmt;
 use std::collections::BTreeMap;
-use std::ops::Bound::Included;
+use std::sync::Mutex;
 
 /// Database struture
 /// 
@@ -96,7 +96,10 @@ impl Database {
             None => return Err(String::from("Target table does not exist")),
         };
 
-        self.tables[target].data = self.tables[source].data.clone();
+        let mut data_source = self.tables[source].data.lock().unwrap();
+        let data_target = self.tables[target].data.lock().unwrap();
+
+        *data_source = data_target.clone();
 
         return Ok(());
     }
@@ -131,7 +134,7 @@ impl Database {
 /// A table consist of `Record` elements.
 pub struct Table {
     name: String,
-    data: BTreeMap<String, String>,
+    data: Mutex<BTreeMap<String, String>>,
 }
 
 impl Table {
@@ -139,7 +142,7 @@ impl Table {
     fn new(name: String) -> Table {
         return Table {
             name: name,
-            data: BTreeMap::new(),
+            data: Mutex::new(BTreeMap::new()),
         }
     }
 
@@ -149,46 +152,60 @@ impl Table {
     }
 
     /// Create new row or update currently exists record
-    pub fn insert_or_update(&mut self, key: &str, value: &str) {
-        self.data.insert(String::from(key), String::from(value));
+    pub fn insert_or_update(&self, key: &str, value: &str) {
+        let mut data = self.data.lock().unwrap();
+        data.insert(String::from(key), String::from(value));
     }
 
     /// Get value for specific key
-    pub fn get_value(&self, key: &str) -> Option<&String> {
-        return self.data.get(key);
+    pub fn get_value(&self, key: &str) -> Option<String> {
+        let data = self.data.lock().unwrap();
+        match data.get(key) {
+            Some(v) => return Some(String::from(v)),
+            None => return None,
+        }
     }
 
-    pub fn key_start_with(&self, start_with: &str) -> Vec<&String> {
-        let mut collected: Vec<&String> = Vec::new();
+    pub fn key_start_with(&self, start_with: &str) -> Vec<String> {
+        let mut collected: Vec<String> = Vec::new();
 
         let start_with1 = String::from(start_with);
         let start_with2 = String::from(start_with);
-        for record in self.data.range(start_with1..) {
-            if start_with2.len() <= record.0.len() {
-                let len = start_with2.len();
-                if &record.0[0..len] != &start_with2[..] {
+
+        {
+            let data = self.data.lock().unwrap();
+            for record in data.range(start_with1..) {
+                if start_with2.len() <= record.0.len() {
+                    let len = start_with2.len();
+                    if &record.0[0..len] != &start_with2[..] {
+                        break;
+                    }
+                }
+                else {
                     break;
                 }
+                let temp = String::from(record.0);
+                collected.push(temp);
             }
-            else {
-                break;
-            }
-            collected.push(record.0);
         }
 
         return collected;
     }
 
     /// Filter table records based on an input function
-    pub fn filter_keys<F>(&self, key_filter: F) -> Vec<&String> 
+    pub fn filter_keys<F>(&self, key_filter: F) -> Vec<String> 
     where 
         F: Fn(&String) -> bool,
     {
-        let mut collected: Vec<&String> = Vec::new();
+        let mut collected: Vec<String> = Vec::new();
 
-        for record in &self.data {
-            if key_filter(record.0) {
-                collected.push(record.0);
+        {
+            let data = self.data.lock().unwrap();
+            for record in &*data {
+                if key_filter(&record.0) {
+                    let temp = String::from(record.0);
+                    collected.push(temp);
+                }
             }
         }
 
@@ -201,7 +218,10 @@ impl Table {
         let mut remove_list: Vec<String> = Vec::new();
 
         let mut index: usize = 0;
-        for record in &mut self.data {
+
+        let mut data = self.data.lock().unwrap();
+
+        for record in &*data {
             if remove_filter(record.0) {
                 remove_list.push(record.0.clone());
             }
@@ -214,7 +234,7 @@ impl Table {
 
         index = 0;
         for key in remove_list {
-            self.data.remove(&key);
+            data.remove(&key);
             index += 1;
         }
 
@@ -228,7 +248,8 @@ impl Table {
     {
         let mut result: Vec<T> = Vec::new();
 
-        for record in &self.data {
+        let data = self.data.lock().unwrap();
+        for record in &*data {
             if let Some(output) = select_func(record.0, record.1) {
                 result.push(output);
             }
@@ -241,7 +262,8 @@ impl Table {
 impl fmt::Display for Table {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut final_text = String::new();
-        for record in &self.data {
+        let data = self.data.lock().unwrap();
+        for record in &*data {
             final_text += record.0;
             final_text += ";";
             final_text += record.1;
