@@ -6,8 +6,10 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread::JoinHandle;
 
+type Task = Box<dyn FnOnce() + Send + 'static>;
+
 pub enum Order{
-    Execute(String),
+    Execute(Task),
     Terminate,
 }
 
@@ -15,7 +17,7 @@ impl fmt::Display for Order {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Order::Terminate => return write!(f, "Termination"),
-            Order::Execute(e) => return write!(f, "Order: {}", e),
+            Order::Execute(_) => return write!(f, "Order"),
         }
     }
 }
@@ -45,7 +47,11 @@ impl Pool {
         });
     }
 
-    pub fn execute(&self, order: String) -> Result<(), String> {
+    pub fn execute<F>(&self, order: F) -> Result<(), String> 
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let order = Box::new(order);
         match self.distributor.send(Order::Execute(order)) {
             Ok(_) => return Ok(()),
             Err(e) => return Err(format!("{:?}", e)),
@@ -110,8 +116,7 @@ impl Worker {
                         break;
                     },
                     Order::Execute(s) => {
-                        println!("#{} has to do this: {}", id, s);
-                        std::thread::sleep(std::time::Duration::new(0, 750));
+                        s();
                     }
                 }
             }

@@ -1,14 +1,14 @@
 use std::env;
+use std::process::exit;
 use std::collections::HashMap;
-use std::time::Instant;
-use std::sync::{Arc, Mutex, RwLock};
+use std::net::TcpListener;
+use std::sync::{Arc, RwLock};
 
+mod network;
 mod services;
-use services::data::Database;
+
 use services::process::Pool;
-
-use crate::services::data::Table;
-
+use services::data::Database;
 
 fn main() 
 {
@@ -19,109 +19,103 @@ fn main()
         return;
     }
 
-    // Read configuration from file
-    let config_tmp = onlyati_config::read_config(args[1].as_str());
-    let config: HashMap<String, String>;
-
-    match config_tmp {
-        Ok(r) => config = r,
+    // Parse argument from config file
+    let mut config: HashMap<String, String> = match onlyati_config::read_config(args[1].as_str()) {
+        Ok(conf) => conf,
         Err(e) => {
             println!("Error during config reading: {}", e);
-            return;
+            exit(1);
         },
+    };
+
+    if let None = config.get("threads") {
+        if let Some(n) = number_of_cores() {
+            config.insert(String::from("threads"), n);
+        }
     }
 
     println!("Settings:");
     for setting in &config {
-        println!("{} -> {}", setting.0, setting.1);
+        println!("- {}: {}", setting.0, setting.1);
     }
 
-    println!("-----------------------------");
+    // If some necesarry item is missign return with error
+    if let Err(error) = validate_settings(&config) {
+        println!("{error}");
+        exit(2);
+    }
 
+    // Initialize database
     let mut db = Database::new();
-    db.create_table(String::from("Teszt1")).unwrap();
-    db.create_table(String::from("Error")).unwrap();
-    db.create_table(String::from("Attila")).unwrap();
-    db.create_table(String::from("Teszt2")).unwrap();
-    db.create_table(String::from("Teszt4")).unwrap();
-    db.create_table(String::from("Teszt3")).unwrap();
-    db.create_table(String::from("Batch")).unwrap();
+    db.create_table(String::from("Default")).unwrap();
+    let db = Arc::new(RwLock::new(db));
 
-    for table in db.get_tables() {
-        println!("{}", table.get_name());
+    // Execute background worker threads for TCP stream
+    let core_num = config.get("threads").unwrap().parse::<usize>().unwrap();
+    let stream_workers = match Pool::new(core_num) {
+        Ok(pool) => pool,
+        Err(e) => {
+            println!("ERROR during pool creation: {}", e);
+            exit(3);
+        }
+    };
+
+    // Bind TCPIP address
+    let addr = config.get("address").unwrap();
+    println!("Bind socket to '{}' address", addr);
+    let listener = match TcpListener::bind(addr) {
+        Ok(listener) => listener,
+        Err(e) => {
+            println!("ERROR: {}", e);
+            exit(4);
+        }
+    };
+
+    for stream in listener.incoming() {
+        let db = db.clone();
+        if let Ok(stream) = stream {
+            stream_workers.execute(move || {
+                network::handle_connection(stream, db);
+            }).unwrap();
+        }
     }
-    
-    println!("-----------------------------");
-    db.drop_table("Teszt2").unwrap();
+}
 
-    for table in db.get_tables() {
-        println!("{}", table.get_name());
-    }
+fn validate_settings (settings: &HashMap<String, String>) -> Result<(), String> {
+    let mut errors = String::new();
 
-    println!("-----------------------------");
-    for table in db.filter_tables(|key| { key.starts_with("Teszt")}) {
-        println!("{}", table.get_name());
-    }
-
-    println!("-----------------------------");
-
-    match db.select_table_mut("Teszt1") {
-        Some(table) => {
-            table.insert_or_update("Hello", "value");
-            table.insert_or_update("Xerxész", "value");
-            table.insert_or_update("123abc", "value");
-            table.insert_or_update("Cecília", "value");
-            table.insert_or_update("Béla", "value");
-            table.insert_or_update("Balta", "value");
-            table.insert_or_update("Kelemen", "value");
-            table.insert_or_update("Batch-Error-1", "value");
-            table.insert_or_update("Batch-Error-2", "value");
-            table.insert_or_update("Batch-Error-3", "value");
-            table.insert_or_update("Batch-Error-4", "value");
-            table.insert_or_update("Batch-Status-1", "value");
-
-            let list = table.key_start_with("Batch-Error");
-            println!("{:?}", list);
-
-            println!("{}", table);
-        },
-        None => (),
+    if let None = settings.get("address") {
+        errors += "ERROR in config: Field 'address' is missing\n";
     }
 
-    println!("-----------------------------");
+    if let None = settings.get("threads") {
+        errors += "ERROR in config: Field 'threads' is missing or couldn't fetch from /proc/cpuinfo\n";
+    }
 
-    match db.select_table_mut("Teszt1") {
-        Some(table) => {
-            println!("Count\t\tInsert\t\tGet\t\tRemove\t\tFilter");
-            for x in 5..51 {
-                let upper_limit = x * 1_000;
+    if !errors.is_empty() {
+        return Err(errors);
+    }
 
-                let now = Instant::now();
-                for i in (0..upper_limit).rev() {
-                    table.insert_or_update(format!("{}", i).as_str(), "Teszt value is here");
-                    // table.insert_or_update("Update teszt", "Teszt value is here");
+    return Ok(());
+}
+
+fn number_of_cores() -> Option<String> {
+    match std::fs::read_to_string("/proc/cpuinfo") {
+        Ok(text) => {
+            for line in text.lines() {
+                if line.contains(":") {
+                    let temp: Vec<&str> = line.split(":").collect();
+                    if temp[0].trim() == "cpu cores" {
+                        match temp[1].trim().parse::<usize>() {
+                            Ok(_) => return Some(String::from(temp[1].trim())),
+                            Err(_) => return None,
+                        }
+                    }
                 }
-                let elapsed_insert = now.elapsed();
-
-                let now = Instant::now();
-                for i in (0..upper_limit).rev() {
-                    let _ = table.get_value(format!("{}", i).as_str());
-                }
-                let elapsed_get = now.elapsed();
-
-                let now = Instant::now();
-                for _ in 0..upper_limit {
-                    let _ = table.key_start_with("2000");
-                }
-                let elapsed_filter = now.elapsed();
-
-                let now = Instant::now();
-                table.remove(|_| {true});
-                let elapsed_remove = now.elapsed();
-
-                println!("{}\t\t{:.2?}\t\t{:.2?}\t\t{:.2?}\t\t{:.2?}", upper_limit, elapsed_insert, elapsed_get, elapsed_remove, elapsed_filter);
             }
-        },
-        None => (),
+        }
+        Err(_) => return None,
     }
+
+    return None;
 }
