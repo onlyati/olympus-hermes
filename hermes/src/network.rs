@@ -5,8 +5,9 @@ use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
 use crate::services::data::Database;
+use crate::services::parser;
 
-pub fn handle_connection(mut stream: TcpStream, _db: Arc<RwLock<Database>>) {
+pub fn handle_connection(mut stream: TcpStream, db: Arc<RwLock<Database>>) {
     let now = std::time::Instant::now();
 
     let buffer = BufReader::new(&stream);
@@ -75,9 +76,14 @@ pub fn handle_connection(mut stream: TcpStream, _db: Arc<RwLock<Database>>) {
         return;
     }
 
-    let _command = String::from_utf8(msg_u8).unwrap();
+    let command = String::from_utf8(msg_u8).unwrap();
     
-    stream.write(b"Placeholder\n").unwrap();
+    let response: String = match parser::parse_db_command(&command[..], db) {
+        Ok(s) => s,
+        Err(s) => s,
+    };
+    
+    stream.write(response.as_bytes()).unwrap();
     stream.flush().unwrap();
 
     let elapsed = now.elapsed();
