@@ -17,9 +17,12 @@ fn main() {
     let full_cmd = args.join(" ");
     let message = format!("{} {}", full_cmd.len(), full_cmd);
 
+    let now = std::time::Instant::now();
     stream.write(message.as_bytes()).unwrap();
     
     let mut response = String::new();
     stream.read_to_string(&mut response).unwrap();
+    let elapsed = now.elapsed();
     println!("{response}");
+    println!("Elapsed time: {:?}", elapsed);
 }

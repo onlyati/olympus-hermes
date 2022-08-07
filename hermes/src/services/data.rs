@@ -166,6 +166,12 @@ impl Table {
         }
     }
 
+    /// Remove specified key
+    pub fn remove_key(&self, key: &str) -> Option<String> {
+        let mut data = self.data.lock().unwrap();
+        return data.remove(key);
+    }
+
     pub fn key_start_with(&self, start_with: &str) -> Vec<String> {
         let mut collected: Vec<String> = Vec::new();
 
