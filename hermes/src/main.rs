@@ -9,6 +9,7 @@ mod services;
 
 use services::process::Pool;
 use services::data::Database;
+use services::parser;
 
 fn main() 
 {
@@ -50,6 +51,33 @@ fn main()
     db.create_table(String::from("Default")).unwrap();
     let db = Arc::new(RwLock::new(db));
 
+    match config.get("init_data") {
+        Some(value) => {
+            println!("Read initial data from {} file", value);
+            let path = std::path::Path::new(value);
+            if path.exists() {
+                let content = match std::fs::read_to_string(&path) {
+                    Ok(content) => content,
+                    Err(e) => {
+                        println!("Failed to read init data file: {:?}", e);
+                        String::new()
+                    },
+                };
+
+                for line in content.lines() {
+                    if line.is_empty() {
+                        continue;
+                    }
+
+                    if let Err(e) = parser::parse_db_command(line, db.clone()) {
+                        println!("Error in \"{}\" statment: {}", line, e);
+                    }
+                }
+            }
+        },
+        None => println!("No init data file is specified"),
+    }
+
     // Execute background worker threads for TCP stream
     let core_num = config.get("threads").unwrap().parse::<usize>().unwrap();
     let stream_workers = match Pool::new(core_num) {
@@ -71,6 +99,7 @@ fn main()
         }
     };
 
+    println!("Listeting on {} address...", addr);
     for stream in listener.incoming() {
         let db = db.clone();
         if let Ok(stream) = stream {

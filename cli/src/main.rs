@@ -4,7 +4,10 @@ use std::net::TcpStream;
 use std::io::{Write, Read};
 
 fn main() {
-    let mut args: Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
+    let args = args.join(" ");
+    let mut args: Vec<&str> = args.split_whitespace().collect();
+
     if args.len() < 4 {
         println!("Missing input parameters!");
         exit(1);
