@@ -1,5 +1,4 @@
 use std::env;
-use std::process::exit;
 use std::net::TcpStream;
 use std::io::{Write, Read};
 
@@ -7,11 +6,6 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let args = args.join(" ");
     let mut args: Vec<&str> = args.split_whitespace().collect();
-
-    if args.len() < 4 {
-        println!("Missing input parameters!");
-        exit(1);
-    }
 
     args.remove(0);
 

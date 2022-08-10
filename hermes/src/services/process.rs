@@ -8,6 +8,9 @@ use std::thread::JoinHandle;
 
 type Task = Box<dyn FnOnce() + Send + 'static>;
 
+/// Order to the worker in the pool:
+/// - It can be a task to execute
+/// - Or a sign to be stop
 pub enum Order{
     Execute(Task),
     Terminate,
@@ -22,12 +25,14 @@ impl fmt::Display for Order {
     }
 }
 
+/// Worker pool struct. It contains the worker threads and `std::sync:mpsc::Sender` struct where it can send request to the workers.
 pub struct Pool {
     distributor: Sender<Order>,
     threads: Vec<Worker>,
 }
 
 impl Pool {
+    /// Create workers in specified numbers
     pub fn new(cores: usize) -> Result<Pool, String> {
         println!("Creating the pool...");
         let (sender, receiver) = mpsc::channel();
@@ -47,6 +52,7 @@ impl Pool {
         });
     }
 
+    /// Execute a command with a random worker
     pub fn execute<F>(&self, order: F) -> Result<(), String> 
     where
         F: FnOnce() + Send + 'static,
@@ -76,12 +82,20 @@ impl Drop for Pool {
     }
 }
 
+/// Worker struct to execute tasks
 struct Worker {
     id: usize,
     thread: Option<JoinHandle<()>>,
 }
 
 impl Worker {
+    /// Create new worker
+    /// 
+    /// This function will start a thread. The created thread will do the following:
+    /// - Send back a sign that it has been created
+    /// - Listeining on specified `Receiver` for orders
+    /// 
+    /// Function returns if the thread has gave sign back about it
     fn new(id: usize, receiver: Arc<Mutex<Receiver<Order>>>) -> Worker {
         
         let (send, rec) = mpsc::channel();

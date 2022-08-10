@@ -7,6 +7,11 @@ use std::sync::{Arc, RwLock};
 use crate::services::data::Database;
 use crate::services::parser;
 
+/// ## Handle incoming request
+/// 
+/// This function handles request which are coming via regular port. 
+/// After data stream is read, content is send to parser function.
+/// Answer or parser function is sent back as reply to the source.
 pub fn handle_connection(mut stream: TcpStream, db: Arc<RwLock<Database>>) {
     let now = std::time::Instant::now();
 
