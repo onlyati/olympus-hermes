@@ -13,8 +13,6 @@ use crate::services::parser;
 /// After data stream is read, content is send to parser function.
 /// Answer or parser function is sent back as reply to the source.
 pub fn handle_connection(mut stream: TcpStream, db: Arc<RwLock<Database>>) {
-    let now = std::time::Instant::now();
-
     let buffer = BufReader::new(&stream);
 
     let mut length_u8: Vec<u8> = Vec::with_capacity(5 * size_of::<usize>());   // Store bytes while readin, itis the message length
@@ -90,7 +88,4 @@ pub fn handle_connection(mut stream: TcpStream, db: Arc<RwLock<Database>>) {
     
     stream.write(response.as_bytes()).unwrap();
     stream.flush().unwrap();
-
-    let elapsed = now.elapsed();
-    println!("Execution time: {:?}", elapsed);
 }

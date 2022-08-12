@@ -265,6 +265,15 @@ impl Table {
     }
 }
 
+impl Drop for Table {
+    fn drop(&mut self) {
+        println!("Table, {}, will be deleted", self.get_name());
+        let mut db = self.data.lock().unwrap();
+        db.clear();
+        println!("Table, {}, is deleted", self.get_name());
+    }
+}
+
 impl fmt::Display for Table {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut final_text = String::new();

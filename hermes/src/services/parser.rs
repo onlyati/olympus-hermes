@@ -16,7 +16,6 @@ pub fn parse_db_command(command: &str, db: Arc<RwLock<Database>>) -> Result<Stri
     let command = command.trim();
 
     let command_vec: Vec<&str> = command.split_whitespace().collect();
-    println!("[{}]", command);
 
     if command_vec.len() < 3 {
         if command == "help" {
