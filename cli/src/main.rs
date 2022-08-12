@@ -1,18 +1,93 @@
 use std::env;
 use std::net::TcpStream;
 use std::io::{Write, Read};
+use std::process::exit;
 
 fn main() {
+    /*-------------------------------------------------------------------------------------------*/
+    /* Read all parameter then parse them to words                                               */
+    /*-------------------------------------------------------------------------------------------*/
     let args: Vec<String> = env::args().collect();
     let args = args.join(" ");
     let mut args: Vec<&str> = args.split_whitespace().collect();
 
     args.remove(0);
 
-    let mut stream = TcpStream::connect("127.0.0.1:3030").unwrap();
+    /*-------------------------------------------------------------------------------------------*/
+    /* Parse the input and upload the Argument struct with those values                          */
+    /*-------------------------------------------------------------------------------------------*/
+    let mut input: Argument = Argument { address: None, command: None, verbose: false };
 
-    let full_cmd = args.join(" ");
-    let message = format!("{} {}", full_cmd.len(), full_cmd);
+    for i in 0..args.len() {
+        if args[i] == "-h" || args[i] == "--help" {
+            // It is the help of CLI, show it then exit
+            display_help();
+            exit(0);
+        }
+
+        if i > 0 {
+            if args[i - 1] == "-a" {
+                input.address = Some(String::from(args[i]));
+                continue;
+            }
+        }
+
+        if args[i] == "-a" {
+            // Address must be followed after "-a", no extra to do just check the next word for address
+            continue;
+        }
+
+        if args[i] == "-v" {
+            // We want to display more things
+            input.verbose = true;
+            continue;
+        }
+
+        // At this point, it is the COMMAND part of argument
+        if let None = &mut input.command {
+            input.command = Some(String::from(args[i]));
+            continue;
+        }
+        if let Some(cmd) = &mut input.command {
+            cmd.push(' ');
+            cmd.push_str(args[i]);
+        }
+    }
+
+    if input.verbose {
+        println!("#Address: >{:?}<", input.address);
+        println!("#Command: >{:?}<", input.command);
+    }
+
+    let message = match input.command {
+        Some(cmd) => {
+            format!("{} {}", cmd.len(), cmd)
+        },
+        None => {
+            println!(">Error\nCommand must be specified");
+            exit(1);
+        }
+    };
+
+    if input.verbose {
+        println!("#Message to Hermes: >{}<", message);
+    }
+
+    let mut stream = match input.address {
+        Some(addr) => {
+            match TcpStream::connect(addr) {
+                Ok(stream) => stream,
+                Err(e) => {
+                    println!(">Error\n{:?}", e);
+                    exit(2);
+                }
+            }
+        },
+        None => {
+            println!(">Error\nAddress field is not specified");
+            exit(1);
+        }
+    };
 
     let now = std::time::Instant::now();
     stream.write(message.as_bytes()).unwrap();
@@ -21,5 +96,30 @@ fn main() {
     stream.read_to_string(&mut response).unwrap();
     let elapsed = now.elapsed();
     println!("{response}");
-    println!("Elapsed time: {:?}", elapsed);
+
+    if input.verbose{
+        println!("#Elapsed time: {:?}", elapsed);
+    }
+}
+
+struct Argument {
+    address: Option<String>,
+    command: Option<String>,
+    verbose: bool,
+}
+
+fn display_help() {
+    println!("Syntax of command:");
+    println!("");
+    println!("   hermes-cli [-v] -a <address> COMMAND");
+    println!("");
+    println!("   -v");
+    println!("      Verbose switch. If this is put in the command then more details is written.");
+    println!("");
+    println!("   -a <address>");
+    println!("      Address and port for Hermes server. This must following this format: ");
+    println!("      <host-name>:<port> or <ip-address>:<port>");
+    println!("");
+    println!("   COMMAND");
+    println!("      Hermes command what you want to execute. Execute 'help' Hermes command to display them.");
 }
