@@ -1,272 +1,193 @@
-mod item;
-mod group;
-mod thread_pool;
-mod data_handler;
-
 use std::env;
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::net::TcpListener;
-use std::net::TcpStream;
-use std::process::Command;
+use std::process::exit;
 use std::collections::HashMap;
+use std::net::TcpListener;
+use std::sync::{Arc, RwLock};
 
-use std::{thread, time};
+mod network;
+mod services;
 
-use onlyati_http::parser::HttpResponse;
-use onlyati_http::parser::EndPointType;
-use onlyati_http::parser::RequestInfo;
-use onlyati_http::parser::RequestResponse;
-use onlyati_http::endpoints::EndPointCollection;
-
-use once_cell::sync::OnceCell;
-
-use std::sync::Arc;
-use std::sync::Mutex;
-
-use thread_pool::ThreadPool;
-
-use data_handler::Group;
-use data_handler::Directory;
-
-static DATA: OnceCell<Mutex<Directory>> = OnceCell::new();
-const BUFFER_SIZE: usize = 4096;
+use services::process::Pool;
+use services::data::Database;
+use services::parser;
 
 fn main() 
 {
-    debug(String::from("Debug is on"));
+    // Read the arguments and parse it onto a structure
+    let config = match read_config() {
+        Ok(conf) => conf,
+        Err(e) => {
+            println!("ERROR: {}", e);
+            exit(1);
+        }
+    };
 
+    // Initialize database
+    let db = match initialize_db(&config) {
+        Ok(db) => db,
+        Err(e) => {
+            println!("ERROR: {}", e);
+            exit(1);
+        }
+    };
+
+    // Execute background worker threads for TCP stream
+    let core_num = config.get("threads").unwrap().parse::<usize>().unwrap();
+    let stream_workers = match Pool::new(core_num) {
+        Ok(pool) => pool,
+        Err(e) => {
+            println!("ERROR during pool creation: {}", e);
+            exit(3);
+        }
+    };
+
+    // Bind TCPIP address
+    let addr = config.get("address").unwrap();
+    println!("Bind socket to '{}' address", addr);
+    let listener = match TcpListener::bind(addr) {
+        Ok(listener) => listener,
+        Err(e) => {
+            println!("ERROR: {}", e);
+            exit(4);
+        }
+    };
+
+    println!("Listeting on {} address...", addr);
+    for stream in listener.incoming() {
+        let db = db.clone();
+        if let Ok(stream) = stream {
+            stream_workers.execute(move || {
+                network::handle_connection(stream, db);
+            }).unwrap();
+        }
+    }
+}
+
+/// ## Database creator
+/// 
+/// This function initialize a `Database` instance and read "init_data" file if specified in config.
+/// If specified it will try to parse it and upload the initial data.
+/// 
+/// ### Return
+/// 
+/// Function return with OK if "init_data" was not specified or the parse was successful.
+/// In case of any parse error, function return with error.
+fn initialize_db(config: &HashMap<String, String>) -> Result<Arc<RwLock<Database>>, String> {
+    let mut db = Database::new();
+    db.create_table(String::from("Default")).unwrap();
+    let db = Arc::new(RwLock::new(db));
+
+    match config.get("init_data") {
+        Some(value) => {
+            println!("Read initial data from {} file", value);
+            let path = std::path::Path::new(value);
+            if path.exists() {
+                let content = match std::fs::read_to_string(&path) {
+                    Ok(content) => content,
+                    Err(e) => return Err(format!("Failed to read init data file: {:?}", e)),
+                };
+
+                for line in content.lines() {
+                    if line.is_empty() {
+                        continue;
+                    }
+
+                    if let Err(e) = parser::parse_db_command(line, db.clone()) {
+                        println!("Error in \"{}\" statment: {}", line, e);
+                    }
+                }
+            }
+        },
+        None => println!("No init data file is specified"),
+    }
+
+    return Ok(db);
+}
+
+/// ## Config reader
+/// 
+/// This function reads the configuration file which was specified as parameter.
+/// 
+/// ### Return
+/// 
+/// Function return with OK if file has been read and it contains the required parameters.
+/// If the config file read has failed or not enough parameter is specified function return with error.
+fn read_config() -> Result<HashMap<String, String>, String> {
     // Read the arguments and parse it onto a structure
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         println!("Config path must be specified as parameter!");
-        return;
+        return Err(String::from("Path for config is not specified"));
     }
 
-    debug(format!("Used configuration file: {}", args[1]));
+    // Parse argument from config file
+    let mut config: HashMap<String, String> = match onlyati_config::read_config(args[1].as_str()) {
+        Ok(conf) => conf,
+        Err(e) => return Err(format!("Error during config reading: {}", e)),
+    };
 
-    // Read configuration from file
-    let config_tmp = onlyati_config::read_config(args[1].as_str());
-    let mut config: HashMap<String, String>;
-
-    match config_tmp {
-        Ok(r) => config = r,
-        Err(e) => {
-            println!("Error during config reading: {}", e);
-            return;
-        },
-    }
-
-    // Initialize data structure to store it
-    let mut data_dir = Directory::new();
-    let mut_data = DATA.set(Mutex::new(data_dir));
-    if let Err(_) = mut_data {
-        println!("Error during mutex data bind!");
-        return;
-    }
-
-    // Setup REST API endpoints
-    let mut endpoints = EndPointCollection::new();
-    endpoints.add("/item", EndPointType::GET, item::get_value);
-    endpoints.add("/item", EndPointType::POST, item::set_value);
-    endpoints.add("/item", EndPointType::DELETE, item::remove_value);
-    endpoints.add("/filter", EndPointType::GET, item::filter_value);
-    endpoints.add("/group", EndPointType::GET, group::list_group);
-    endpoints.add("/group", EndPointType::POST, group::add_group);
-    endpoints.add("/group", EndPointType::DELETE, group::drop_group);
-
-    // Setup Threadpool
-    if !config.contains_key("threads") {
-        config.insert(String::from("threads"), number_of_cpu_threads().to_string());
-    }
-    
-    println!("Write out the config:");
-    for (key, value) in &config {
-        println!("{} -> {}", key, value);
-    }
-
-    let pool: ThreadPool;
-    match &config.get("threads") {
-        Some(v) => {
-            let count: usize = v.parse::<usize>().unwrap();
-            pool = ThreadPool::new(&count);
-        },
-        None => {
-            println!("Thread number is not specified!");
-            return;
-        },
-    }
-
-    // Initailize and start TCP listening
-    let listener: TcpListener;
-    match &config.get("address") {
-        Some(v) => listener = TcpListener::bind(v).expect(format!("Bind has failed to {}", v).as_str()),
-        None => {
-            println!("Address is not specified");
-            return;
+    if let None = config.get("threads") {
+        if let Some(n) = number_of_cores() {
+            config.insert(String::from("threads"), n);
         }
     }
 
-    let endp = Arc::new(Mutex::new(endpoints));
-
-    // Start listening
-    println!("Start listening...");
-    for stream in listener.incoming()
-    {
-        let endp_arc = Arc::clone(&endp);
-        let stream = stream.unwrap();
-        pool.execute(move || {
-            handle_request(stream, endp_arc);
-        });
+    println!("Settings:");
+    for setting in &config {
+        println!("- {}: {}", setting.0, setting.1);
     }
 
-    // End of Hermes
-    println!("Hermes is shutting down...");
+    // If some necesarry item is missign return with error
+    if let Err(error) = validate_settings(&config) {
+        return Err(format!("{error}"));
+    }
+
+    return Ok(config);
 }
 
-/// Handle requeste
+/// ## Configuration validator
 /// 
-/// Function which is passed to each thread to execute:
-/// 1. Read the incomcing data
-/// 2. Parse it onto `RequestResponse` request
-/// 3. Calling execution for endpoints
-/// 4. Send the request back to the caller
-fn handle_request(mut stream: TcpStream, endpoints: Arc<Mutex<EndPointCollection>>) {
-    stream.set_read_timeout(Some(time::Duration::new(0, 100))).unwrap();
-    let mut incoming_data: String = String::new();
-    let mut read_done: bool = false;
+/// It validate the configuration content.
+fn validate_settings(settings: &HashMap<String, String>) -> Result<(), String> {
+    let mut errors = String::new();
 
-    let mut prepare_check: bool = false;
-    let mut check_data: bool = false;
-    let mut seq: i32 = 0;
-    
-    while !read_done {
-        let mut buffer = [0; BUFFER_SIZE];
-        buffer.fill(0x00);
-        match stream.read(&mut buffer) {
-            Ok(0) => read_done = true,
-            Ok(r) => {
-                seq = seq + 1;
-                debug(format!("{}", seq));
-                if seq == 2 {
-                    incoming_data = incoming_data + "\r\n\r\n";
-                    check_data = true;
-                }
-                incoming_data = incoming_data + String::from_utf8_lossy(&buffer[0..r]).trim();
+    if let None = settings.get("address") {
+        errors += "ERROR in config: Field 'address' is missing\n";
+    }
 
-                debug(format!("Request from OK:\nb{}", incoming_data));
+    if let None = settings.get("threads") {
+        errors += "ERROR in config: Field 'threads' is missing or couldn't fetch from /proc/cpuinfo\n";
+    }
 
-                let mut lines = incoming_data.lines();
-        
-                for line in lines {
-                    if line.starts_with("GET") || line.starts_with("DELETE") {
-                        // No need to check content for some requests, they only have header
-                        read_done = true;
-                    }
+    if !errors.is_empty() {
+        return Err(errors);
+    }
 
-                    if line.starts_with("Content-Length:") {
-                        let parse: Vec<&str> = line.split(": ").collect();
-                        if parse[1] == "0" {
-                            read_done = true;
-                        }
-                        else {
-                            prepare_check = true;
+    return Ok(());
+}
+
+/// ## Get number of CPU cores
+/// 
+/// This function read the "/proc/cpuinfo" file and find the line begin wtih "cpu cores".
+/// If it is found, number will be parsed and returned as value.
+/// Erlse it return with none.
+fn number_of_cores() -> Option<String> {
+    match std::fs::read_to_string("/proc/cpuinfo") {
+        Ok(text) => {
+            for line in text.lines() {
+                if line.contains(":") {
+                    let temp: Vec<&str> = line.split(":").collect();
+                    if temp[0].trim() == "cpu cores" {
+                        match temp[1].trim().parse::<usize>() {
+                            Ok(_) => return Some(String::from(temp[1].trim())),
+                            Err(_) => return None,
                         }
                     }
-
-                    if check_data {
-                        read_done = true;
-                    }
-
-                    if line.is_empty() && prepare_check == true {
-                        check_data = true;
-                    }
                 }
-            },
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                debug(format!("Sequence: {}", seq));
-                debug(format!("{} - {}", prepare_check, check_data));
-                debug(format!("Request from Err:\n[{}]", incoming_data));
-
-                let mut header: HashMap<String, String> = HashMap::new();
-                header.insert(String::from("Content-Type"), String::from("plain/text"));
-                let response = RequestResponse::new(HttpResponse::LenghtRequired, header, String::from("Content-Length could not determined"));
-                stream.write(response.print().as_bytes()).unwrap();
-                stream.flush().unwrap();
-                return;
-            },
-            Err(_) => {
-                let mut header: HashMap<String, String> = HashMap::new();
-                header.insert(String::from("Content-Type"), String::from("plain/text"));
-                let response = RequestResponse::new(HttpResponse::InternalServerError, header, String::from("Sorry :-("));
-                stream.write(response.print().as_bytes()).unwrap();
-                stream.flush().unwrap();
-                return;
-            },
+            }
         }
+        Err(_) => return None,
     }
-    
-    // Default answer
-    let mut response = RequestResponse::new(HttpResponse::BadRequest, HashMap::new(), String::from(""));
 
-    let infos = RequestInfo::new(&incoming_data[..]);
-
-    if let Some(info) = infos {
-        if info.body == "" {
-            debug(format!(">>>>> Itt volt a gond"));
-            debug(format!("{}", incoming_data));
-            debug(format!("------------------------------"));
-        }
-        // If parse was successful, then find endpoint for it
-        {
-            let endp = endpoints.lock().unwrap();
-            response = endp.execute(info);
-        }
-    }
- 
-    // Create a text HTTP response from structure
-    let final_response = response.print();
-
-    stream.write(final_response.as_bytes()).unwrap();
-    stream.flush().unwrap();
-}
-
-/// Count CPU threads
-/// 
-/// This method find out how many CPU threads are running based on `/usr/bin/grep -c ^processor /proc/info` output.
-/// 
-/// # Input(s)
-/// 
-/// No input.
-/// 
-/// # Return value
-/// 
-/// Number of CPU threads.
-/// 
-/// # Panics
-/// 
-/// - If it could not execute grep command or
-/// - Command output parse onto `usize` has failed
-fn number_of_cpu_threads() -> usize {
-    let raw_output = Command::new("/usr/bin/grep")
-        .arg("-c")
-        .arg("^processor")
-        .arg("/proc/cpuinfo")
-        .output()
-        .expect("Could not find out how many CPU thread has");
-
-    let mut output = String::from(String::from_utf8_lossy(&raw_output.stdout));
-    if output.ends_with('\n')
-    {
-        output.pop();
-    }
-    let count: usize = output.parse::<usize>().expect(format!("Could not parse CPU thread count onto number: [{}]", output).as_str());
-    count
-}
-
-fn debug(text: String) {
-    match env::var("HERMES_DEBUG") {
-        Ok(_) => println!("{}", text),
-        Err(_) => (),
-    }
+    return None;
 }
