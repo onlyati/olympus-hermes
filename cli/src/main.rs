@@ -25,6 +25,11 @@ fn main() {
             exit(0);
         }
 
+        if args[i] == "--version" {
+            println!("v0.1.1");
+            exit(0);
+        }
+
         if i > 0 {
             if args[i - 1] == "-a" {
                 input.address = Some(String::from(args[i]));
@@ -99,6 +104,10 @@ fn main() {
 
     if input.verbose{
         println!("#Elapsed time: {:?}", elapsed);
+    }
+
+    if response.lines().next().unwrap() != ">Done" {
+        exit(10);
     }
 }
 

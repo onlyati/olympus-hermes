@@ -13,6 +13,9 @@ use services::parser;
 
 fn main() 
 {
+    // Display version number to make sure which version is starting
+    println!("Starting 0.1.1 version is in progress...");
+
     // Read the arguments and parse it onto a structure
     let config = match read_config() {
         Ok(conf) => conf,
