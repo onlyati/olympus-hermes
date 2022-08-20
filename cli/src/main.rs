@@ -2,6 +2,7 @@ use std::env;
 use std::net::TcpStream;
 use std::io::{Write, Read};
 use std::process::exit;
+use std::collections::HashMap;
 
 fn main() {
     /*-------------------------------------------------------------------------------------------*/
@@ -12,6 +13,8 @@ fn main() {
     let mut args: Vec<&str> = args.split_whitespace().collect();
 
     args.remove(0);
+
+    let defaults = get_defaults();
 
     /*-------------------------------------------------------------------------------------------*/
     /* Parse the input and upload the Argument struct with those values                          */
@@ -57,6 +60,13 @@ fn main() {
             cmd.push(' ');
             cmd.push_str(args[i]);
         }
+    }
+
+    if let None = input.address {
+        input.address = match defaults.get("address") {
+            Some(addr) => Some(addr.clone()),
+            None => None,
+        };
     }
 
     if input.verbose {
@@ -109,6 +119,15 @@ fn main() {
     if response.lines().next().unwrap() != ">Done" {
         exit(10);
     }
+}
+
+fn get_defaults() -> HashMap<String, String> {
+    let config = match onlyati_config::read_config("/etc/olympus/hermes/defaults") {
+        Ok(conf) => conf,
+        Err(_) => HashMap::new(),
+    };
+
+    return config;
 }
 
 struct Argument {
