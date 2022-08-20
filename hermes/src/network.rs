@@ -35,7 +35,7 @@ pub fn handle_connection(mut stream: TcpStream, db: Arc<RwLock<Database>>) {
                     length = match msg_len_t.parse::<usize>() {
                         Ok(v) => v,
                         Err(_) => {
-                            let _ = stream.write_all(b"First word must be a number which is the lenght of message\n");
+                            let _ = stream.write_all(b">Error\nFirst word must be a number which is the lenght of message\n");
                             return;
                         }
                     };
@@ -62,12 +62,12 @@ pub fn handle_connection(mut stream: TcpStream, db: Arc<RwLock<Database>>) {
                 }
             },
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                let _ = stream.write_all(b"ERROR: Request is not complete within time\n");
+                let _ = stream.write_all(b">Error\nRequest is not complete within time\n");
                 return;
             },
             Err(e) => {
                 println!("Unexpected error: {:?}", e);
-                let _ = stream.write_all(b"ERROR: Internal server error during stream reading\n");
+                let _ = stream.write_all(b">Error\nInternal server error during stream reading\n");
                 return;
             },
         }
@@ -82,8 +82,8 @@ pub fn handle_connection(mut stream: TcpStream, db: Arc<RwLock<Database>>) {
     let command = String::from_utf8(msg_u8).unwrap();
     
     let response: String = match parser::parse_db_command(&command[..], db) {
-        Ok(s) => s,
-        Err(s) => s,
+        Ok(s) => format!(">Done\n{}", s),
+        Err(s) => format!(">Error\n{}", s),
     };
     
     stream.write(response.as_bytes()).unwrap();
