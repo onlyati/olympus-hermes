@@ -11,7 +11,7 @@ use services::process::Pool;
 use services::data::Database;
 use services::parser;
 
-static VERSION: &str = "v.0.1.2";
+static VERSION: &str = "v.0.1.3";
 
 fn main() 
 {
