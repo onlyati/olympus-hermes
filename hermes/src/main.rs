@@ -11,10 +11,12 @@ use services::process::Pool;
 use services::data::Database;
 use services::parser;
 
+static VERSION: &str = "v.0.1.2";
+
 fn main() 
 {
     // Display version number to make sure which version is starting
-    println!("Starting 0.1.1 version is in progress...");
+    println!("Starting {} version is in progress...", VERSION);
 
     // Read the arguments and parse it onto a structure
     let config = match read_config() {
