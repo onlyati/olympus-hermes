@@ -10,11 +10,13 @@ mod services;
 use services::process::Pool;
 use services::data::Database;
 use services::parser;
+use services::grpc;
 
 static VERSION: &str = "v.0.1.3";
 static DB: RwLock<Option<Database>> = RwLock::new(None);
 
-fn main() 
+#[tokio::main]
+async fn main() 
 {
     // Display version number to make sure which version is starting
     println!("Starting {} version is in progress...", VERSION);
@@ -35,6 +37,18 @@ fn main()
             println!("ERROR: {}", e);
             exit(1);
         }
+    }
+
+    // Start gRPC server
+    println!("Starting gRPC server...");
+    match config.get("grpc_addr") {
+        Some(addr) => {
+            let addr = addr.clone();
+            tokio::spawn(async move {
+                grpc::start_server(&addr).await;
+            });
+        },
+        None => println!("Address for gRPC is not specified, not started"),
     }
 
     // Execute background worker threads for TCP stream

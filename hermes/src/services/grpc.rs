@@ -219,6 +219,7 @@ impl Hermes for HermesGrpc {
 pub async fn start_server(address: &String) {
     let hermes_grpc = HermesGrpc::default();
 
+    println!("Listening for gRPC on {} address...", address);
     Server::builder()
         .add_service(HermesServer::new(hermes_grpc))
         .serve(address.parse().unwrap())
