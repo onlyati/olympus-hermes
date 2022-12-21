@@ -1,9 +1,13 @@
-use std::net::TcpStream;
-use std::io::{Write, Read};
-use std::thread::JoinHandle;
+use hermes::hermes_client::{HermesClient};
+use hermes::{SetPair};
 
-fn main() {
-    let mut joins: Vec<JoinHandle<()>> = Vec::new();
+mod hermes {
+    tonic::include_proto!("hermes");
+}
+
+#[tokio::main]
+async fn main() {
+    let mut joins: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
     for j in 0..1 {
         let table = {
@@ -21,18 +25,23 @@ fn main() {
             }
         };
 
-        let t1 = std::thread::spawn(move || {
+        let t1 = tokio::spawn(async move {
             let mut times: Vec<u128> = Vec::with_capacity(500_000 * std::mem::size_of::<u128>());
             let whole_now = std::time::Instant::now();
+            let mut client = HermesClient::connect("http://127.0.0.1:3031").await.unwrap();
+
             for i in 0..500_000 {
-                let cmd = format!("set data('key{}', 'Hello ez itt a {}') in {};", i, i, table);
-                let cmd = format!("{} {}", cmd.len(), cmd);
+                let pair = SetPair {
+                    key: format!("key{}", i),
+                    value: format!("Hello ez itt a {}", i),
+                    table: table.to_string(),
+                };
+                let request = tonic::Request::new(pair);
+
                 let now = std::time::Instant::now();
-    
-                let mut stream = TcpStream::connect("127.0.0.1:3030").unwrap();
-                stream.write(cmd.as_bytes()).unwrap();
-                let mut result = String::new();
-                stream.read_to_string(&mut result).unwrap();
+
+                let _ = client.set(request).await;
+                // println!("{:?}", response);
     
                 let elapsed = now.elapsed();
                 times.push(elapsed.as_micros());
@@ -60,7 +69,7 @@ fn main() {
     }
 
     for join in joins {
-        join.join().unwrap();
+        let _ = tokio::join!(join);
     }
     
 }

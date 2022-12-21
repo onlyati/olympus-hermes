@@ -2,9 +2,7 @@ use std::mem::size_of;
 use std::time::Duration;
 use std::io::{Read, Write, BufReader};
 use std::net::TcpStream;
-use std::sync::{Arc, RwLock};
 
-use crate::services::data::Database;
 use crate::services::parser;
 
 /// ## Handle incoming request
@@ -12,7 +10,7 @@ use crate::services::parser;
 /// This function handles request which are coming via regular port. 
 /// After data stream is read, content is send to parser function.
 /// Answer or parser function is sent back as reply to the source.
-pub fn handle_connection(mut stream: TcpStream, db: Arc<RwLock<Database>>) {
+pub fn handle_connection(mut stream: TcpStream) {
     let buffer = BufReader::new(&stream);
 
     let mut length_u8: Vec<u8> = Vec::with_capacity(5 * size_of::<usize>());   // Store bytes while readin, itis the message length
@@ -81,7 +79,7 @@ pub fn handle_connection(mut stream: TcpStream, db: Arc<RwLock<Database>>) {
 
     let command = String::from_utf8(msg_u8).unwrap();
     
-    let response: String = match parser::parse_db_command(&command[..], db) {
+    let response: String = match parser::parse_db_command(&command[..]) {
         Ok(s) => format!(">Done\n{}", s),
         Err(s) => format!(">Error\n{}", s),
     };

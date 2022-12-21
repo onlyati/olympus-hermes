@@ -1,7 +1,5 @@
 #![allow(dead_code)]
-use std::sync::{Arc, RwLock};
-
-use crate::Database;
+use crate::DB;
 
 /// ## Parse request
 /// 
@@ -10,7 +8,7 @@ use crate::Database;
 /// ### Return:
 /// In case of success or error, return string begin with `>Done`. Else it begin with `>Error`.
 /// Output or reply content will coming after a line break.
-pub fn parse_db_command(command: &str, db: Arc<RwLock<Database>>) -> Result<String, String> {
+pub fn parse_db_command(command: &str) -> Result<String, String> {
     let temp_cmds: Vec<&str> = command.split(";").collect();
     let command = temp_cmds[0];
     let command = command.trim();
@@ -43,13 +41,15 @@ pub fn parse_db_command(command: &str, db: Arc<RwLock<Database>>) -> Result<Stri
             Err(e) => return Err(format!("{}\n", e)),
         };
 
-        let db = db.read().unwrap();
-        match db.select_table(db_table) {
-            Some(table) => {
-                table.insert_or_update(&key[..], &value[..]);
-                return Ok(String::from("\n"));
-            },
-            None => return Err(format!("Table does not exist: '{}'\n", db_table)),
+        let db = DB.read().unwrap();
+        if let Some(db) = &*db {
+            match db.select_table(db_table) {
+                Some(table) => {
+                    table.insert_or_update(&key[..], &value[..]);
+                    return Ok(String::from("\n"));
+                },
+                None => return Err(format!("Table does not exist: '{}'\n", db_table)),
+            }
         }
     }
 
@@ -62,18 +62,20 @@ pub fn parse_db_command(command: &str, db: Arc<RwLock<Database>>) -> Result<Stri
             Err(e) => return Err(format!("{}\n", e)),
         };
 
-        let db = db.read().unwrap();
-        match db.select_table(db_table) {
-            Some(table) => {
-                match table.get_value(&key[..]) {
-                    Some(value) => {
-                        return Ok(format!("{}\n", value));
-                    },
-                    None => return Err(format!("Key '{}' does not exist in '{}' table\n", key, db_table)),
-                }
-                
-            },
-            None => return Err(format!("Table does not exist: '{}'\n", db_table)),
+        let db = DB.read().unwrap();
+        if let Some(db) = &*db {
+            match db.select_table(db_table) {
+                Some(table) => {
+                    match table.get_value(&key[..]) {
+                        Some(value) => {
+                            return Ok(format!("{}\n", value));
+                        },
+                        None => return Err(format!("Key '{}' does not exist in '{}' table\n", key, db_table)),
+                    }
+                    
+                },
+                None => return Err(format!("Table does not exist: '{}'\n", db_table)),
+            }
         }
     }
 
@@ -86,18 +88,20 @@ pub fn parse_db_command(command: &str, db: Arc<RwLock<Database>>) -> Result<Stri
             Err(e) => return Err(format!("{}\n", e)),
         };
 
-        let db = db.read().unwrap();
-        match db.select_table(db_table) {
-            Some(table) => {
-                match table.remove_key(&key[..]) {
-                    Some(_) => {
-                        return Ok(String::from("\n"));
-                    },
-                    None => return Err(format!("Key '{}' does not exist in '{}' table\n", key, db_table)),
-                }
-                
-            },
-            None => return Err(format!("Table does not exist: '{}'\n", db_table)),
+        let db = DB.read().unwrap();
+        if let Some(db) = &*db {
+            match db.select_table(db_table) {
+                Some(table) => {
+                    match table.remove_key(&key[..]) {
+                        Some(_) => {
+                            return Ok(String::from("\n"));
+                        },
+                        None => return Err(format!("Key '{}' does not exist in '{}' table\n", key, db_table)),
+                    }
+                    
+                },
+                None => return Err(format!("Table does not exist: '{}'\n", db_table)),
+            }
         }
     }
 
@@ -110,17 +114,19 @@ pub fn parse_db_command(command: &str, db: Arc<RwLock<Database>>) -> Result<Stri
             Err(e) => return Err(format!("{}\n", e)),
         };
 
-        let db = db.read().unwrap();
-        match db.select_table(db_table) {
-            Some(table) => {
-                let mut response = String::from("\n");
-                for key in table.key_start_with(&key[..]) {
-                    response += &key[..];
-                    response += "\n";
-                }
-                return Ok(response);
-            },
-            None => return Err(format!("Table does not exist: '{}'\n", db_table)),
+        let db = DB.read().unwrap();
+        if let Some(db) = &*db {
+            match db.select_table(db_table) {
+                Some(table) => {
+                    let mut response = String::from("\n");
+                    for key in table.key_start_with(&key[..]) {
+                        response += &key[..];
+                        response += "\n";
+                    }
+                    return Ok(response);
+                },
+                None => return Err(format!("Table does not exist: '{}'\n", db_table)),
+            }
         }
     }
 
@@ -128,10 +134,12 @@ pub fn parse_db_command(command: &str, db: Arc<RwLock<Database>>) -> Result<Stri
     /* Create table requests                                                                     */
     /*-------------------------------------------------------------------------------------------*/
     if command.starts_with("create table") {
-        let mut db = db.write().unwrap();
-        match db.create_table(String::from(command_vec[2])) {
-            Ok(_) => return Ok(String::from("\n")),
-            Err(e) => return Err(format!("{}\n", e)),
+        let mut db = DB.write().unwrap();
+        if let Some(db) = &mut *db {
+            match db.create_table(String::from(command_vec[2])) {
+                Ok(_) => return Ok(String::from("\n")),
+                Err(e) => return Err(format!("{}\n", e)),
+            }
         }
     }
 
@@ -139,10 +147,12 @@ pub fn parse_db_command(command: &str, db: Arc<RwLock<Database>>) -> Result<Stri
     /* Drop table requests                                                                       */
     /*-------------------------------------------------------------------------------------------*/
     if command.starts_with("drop table") {
-        let mut db = db.write().unwrap();
-        match db.drop_table(command_vec[2]) {
-            Ok(_) => return Ok(String::from("\n")),
-            Err(e) => return Err(format!("{}\n", e)),
+        let mut db = DB.write().unwrap();
+        if let Some(db) = &mut *db {
+            match db.drop_table(command_vec[2]) {
+                Ok(_) => return Ok(String::from("\n")),
+                Err(e) => return Err(format!("{}\n", e)),
+            }
         }
     }
 
@@ -150,14 +160,16 @@ pub fn parse_db_command(command: &str, db: Arc<RwLock<Database>>) -> Result<Stri
     /* List all tables                                                                           */
     /*-------------------------------------------------------------------------------------------*/
     if command == "list all tables" {
-        let db = db.read().unwrap();
-        let tables = db.get_tables();
-        let mut list = String::from("");
-        for table in tables {
-            list += table.get_name();
-            list += "\n";
+        let db = DB.read().unwrap();
+        if let Some(db) = &*db {
+            let tables = db.get_tables();
+            let mut list = String::from("");
+            for table in tables {
+                list += table.get_name();
+                list += "\n";
+            }
+            return Ok(list);
         }
-        return Ok(list);
     }
 
     return Err(format!("Invalid request: {}", command_vec[0]));
