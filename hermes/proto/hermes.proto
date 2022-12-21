@@ -17,10 +17,12 @@ service Hermes {
 message SetPair {
     string key = 1;
     string value = 2;
+    string table = 3;
 }
 
 message Key {
     string key = 1;
+    string table = 2;
 }
 
 message TableName {
@@ -29,27 +31,20 @@ message TableName {
 
 message Empty {}
 
-message ActionResult {
-    bool success = 1;
-}
-
 message Pair {
-    ActionResult status = 1;
-    string key = 2;
-    string value = 3;
+    string key = 1;
+    string value = 2;
+    string table = 3;
 }
 
 message KeyList {
-    ActionResult status = 1;
-    repeated string keys = 2;
+    repeated string keys = 1;
 }
 
 message Table {
-    bool status = 1;
-    string name = 2;
+    string name = 1;
 }
 
 message TableList {
-    ActionResult status = 1;
-    repeated string tables = 2;
+    repeated string tables = 1;
 }
