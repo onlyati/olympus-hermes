@@ -2,7 +2,7 @@ use std::env;
 use std::process::exit;
 use std::collections::HashMap;
 use std::net::TcpListener;
-use std::sync::{Arc, RwLock};
+use std::sync::{RwLock};
 
 mod network;
 mod services;
@@ -12,6 +12,7 @@ use services::data::Database;
 use services::parser;
 
 static VERSION: &str = "v.0.1.3";
+static DB: RwLock<Option<Database>> = RwLock::new(None);
 
 fn main() 
 {
@@ -28,13 +29,13 @@ fn main()
     };
 
     // Initialize database
-    let db = match initialize_db(&config) {
-        Ok(db) => db,
+    match initialize_db(&config) {
+        Ok(_) => (),
         Err(e) => {
             println!("ERROR: {}", e);
             exit(1);
         }
-    };
+    }
 
     // Execute background worker threads for TCP stream
     let core_num = config.get("threads").unwrap().parse::<usize>().unwrap();
@@ -59,10 +60,9 @@ fn main()
 
     println!("Listeting on {} address...", addr);
     for stream in listener.incoming() {
-        let db = db.clone();
         if let Ok(stream) = stream {
             stream_workers.execute(move || {
-                network::handle_connection(stream, db);
+                network::handle_connection(stream);
             }).unwrap();
         }
     }
@@ -77,10 +77,15 @@ fn main()
 /// 
 /// Function return with OK if "init_data" was not specified or the parse was successful.
 /// In case of any parse error, function return with error.
-fn initialize_db(config: &HashMap<String, String>) -> Result<Arc<RwLock<Database>>, String> {
-    let mut db = Database::new();
-    db.create_table(String::from("Default")).unwrap();
-    let db = Arc::new(RwLock::new(db));
+fn initialize_db(config: &HashMap<String, String>) -> Result<(), String> {
+    {
+        let mut db = DB.write().unwrap();
+        *db = Some(Database::new());
+
+        if let Some(db) = &mut *db {
+            db.create_table(String::from("Default")).unwrap();
+        };
+    }
 
     match config.get("init_data") {
         Some(value) => {
@@ -97,7 +102,7 @@ fn initialize_db(config: &HashMap<String, String>) -> Result<Arc<RwLock<Database
                         continue;
                     }
 
-                    if let Err(e) = parser::parse_db_command(line, db.clone()) {
+                    if let Err(e) = parser::parse_db_command(line) {
                         println!("Error in \"{}\" statment: {}", line, e);
                     }
                 }
@@ -106,7 +111,7 @@ fn initialize_db(config: &HashMap<String, String>) -> Result<Arc<RwLock<Database
         None => println!("No init data file is specified"),
     }
 
-    return Ok(db);
+    return Ok(());
 }
 
 /// ## Config reader
@@ -128,7 +133,7 @@ fn read_config() -> Result<HashMap<String, String>, String> {
     // Parse argument from config file
     let mut config: HashMap<String, String> = match onlyati_config::read_config(args[1].as_str()) {
         Ok(conf) => conf,
-        Err(e) => return Err(format!("Error during config reading: {}", e)),
+        Err(e) => return Err(format!("Error during config reading: {} {}", args[1], e)),
     };
 
     if let None = config.get("threads") {
