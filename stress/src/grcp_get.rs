@@ -21,7 +21,7 @@ async fn main() {
                 "Batch"
             }
             else {
-                "FileAgent"
+                "Monitoring"
             }
         };
 
@@ -33,7 +33,7 @@ async fn main() {
             for i in 0..500_000 {
                 let pair = Key {
                     key: String::from("mem_limit"),
-                    table: String::from("FileAgent"),
+                    table: String::from("Monitoring"),
                 };
                 let request = tonic::Request::new(pair);
 

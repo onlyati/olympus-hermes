@@ -21,7 +21,7 @@ async fn main() {
                 "Batch"
             }
             else {
-                "FileAgent"
+                "Monitoring"
             }
         };
 
