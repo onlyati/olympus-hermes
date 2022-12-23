@@ -1,27 +1,69 @@
 #![allow(dead_code)]
 
-use std::io::{BufReader, Read};
+use std::fmt;
+use std::fmt::Display;
+use std::io::{BufReader, Read, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
 use chrono::{Datelike, Timelike};
 
+//
+// Enums
+//
+
+/// Enum to represent current status of agent
+#[derive(PartialEq, Eq)]
 pub enum AgentStatus {
     Ready,
     Running,
     Forbidden,
 }
 
+impl Display for AgentStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let display = match self {
+            AgentStatus::Forbidden => "Forbidden",
+            AgentStatus::Ready => "Ready",
+            AgentStatus::Running => "Running",
+        };
+        write!(f, "{}", display)
+    }
+}
+
+/// Enum to represent agent message output type
+#[derive(PartialEq, Eq)]
+pub enum AgentOutputType {
+    Info,
+    Error,
+}
+
+impl Display for AgentOutputType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let display = match self {
+            AgentOutputType::Info => "I",
+            AgentOutputType::Error => "E",
+        };
+        write!(f, "{}", display)
+    }
+}
+
+//
+// Structs
+//
+
+/// Struct for agent
 pub struct Agent {
-    pub id: String,
-    pub interval: u32,
-    pub exe_path: String,
-    pub log_path: Box<Path>,
-    pub conf_path: Vec<String>,
-    pub status: AgentStatus,
+    id: String,
+    interval: u32,
+    exe_path: String,
+    log_path: Box<Path>,
+    conf_path: Vec<String>,
+    status: AgentStatus,
 }
 
 impl Agent {
+    /// Create new Agent
     pub fn new(id: String, interval: u32, exe_path: String, log_path: Box<Path> , conf_path: Vec<String>) -> Self {
         Agent {
             id: id,
@@ -33,15 +75,25 @@ impl Agent {
         }
     }
 
+    // Get agent status
     pub fn get_status(&self) -> &AgentStatus {
         return &self.status;
     }
 
-    pub fn forbid(&mut self) {
+    // Forbid agent to run
+    pub fn put_forbid(&mut self) {
         self.status = AgentStatus::Forbidden;
     }
 
+    pub fn put_ready(&mut self) {
+        self.status = AgentStatus::Ready;
+    }
+
     pub fn execute(&mut self) -> Result<(), Option<i32>> {
+        if self.status != AgentStatus::Ready {
+            return Ok(());
+        }
+
         self.status = AgentStatus::Running;
 
         let mut child = Command::new(&self.exe_path)
@@ -65,11 +117,33 @@ impl Agent {
             });
         });
 
+        let status = child.wait().unwrap();
+        self.status = AgentStatus::Ready;
+
         stdout.append(&mut stderr);
         stdout.sort_by(|a, b| a.time.cmp(&b.time));
 
-        let status = child.wait().unwrap();
-        self.status = AgentStatus::Ready;
+        let mut log_file = match std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .append(true)
+            .open(&self.log_path) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("Failed to write log for {} agent due to: {}", self.id, e);
+                    return Err(Some(-999));
+                }
+        };
+
+        for msg in stdout {
+            match writeln!(&mut log_file, "{} {} {}", msg.time, msg.out_type, msg.text) {
+                Ok(_) => (),
+                Err(e) => {
+                    eprintln!("Failed to wrrite log for {} agent due to: {}", self.id, e);
+                    return Err(Some(-998));
+                }
+            };
+        }
 
         if !status.success() {
             return Err(status.code());
@@ -79,16 +153,16 @@ impl Agent {
     }
 }
 
-pub enum AgentOutputType {
-    Info,
-    Error,
-}
-
-pub struct AgentOutput {
+/// Struct for agent output message
+struct AgentOutput {
     time: String,
     text: String,
     out_type: AgentOutputType,
 }
+
+//
+// Other functions
+//
 
 fn read_buffer<T: Read>(reader: &mut BufReader<T>) -> Vec<AgentOutput> {
     const BUFFER_SIZE: usize = 128;
@@ -106,7 +180,7 @@ fn read_buffer<T: Read>(reader: &mut BufReader<T>) -> Vec<AgentOutput> {
         for c in buffer {
             if c == b'\n' {
                 let now = chrono::Local::now();
-                let now = format!("{}-{}-{} {}:{}:{}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
+                let now = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
                 messages.push(AgentOutput { 
                     time: now, 
                     text: line, 
