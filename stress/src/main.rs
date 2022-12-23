@@ -17,7 +17,7 @@ fn main() {
                 "Batch"
             }
             else {
-                "Monitoring"
+                "FileAgent"
             }
         };
 

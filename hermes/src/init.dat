@@ -1,9 +1,9 @@
 create table Error;
 create table Batch;
 create table Report;
-create table Monitoring;
+create table FileAgent;
 
-set data('mem_limit', '8000') in Monitoring;
-set data('storage_dev_sda_perc', '70') in Monitoring;
-set data('storage_dev_sdb_perc', '80') in Monitoring;
-set data('storage_dev_sdc_perc', '60') in Monitoring;
+set data('mem_limit', '8000') in FileAgent;
+set data('storage_dev_sda_perc', '70') in FileAgent;
+set data('storage_dev_sdb_perc', '80') in FileAgent;
+set data('storage_dev_sdc_perc', '60') in FileAgent;
