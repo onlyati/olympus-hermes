@@ -55,7 +55,7 @@ impl Display for AgentOutputType {
 /// Struct for agent
 pub struct Agent {
     id: String,
-    interval: u32,
+    interval: u64,
     exe_path: String,
     log_path: Box<Path>,
     conf_path: Vec<String>,
@@ -64,7 +64,7 @@ pub struct Agent {
 
 impl Agent {
     /// Create new Agent
-    pub fn new(id: String, interval: u32, exe_path: String, log_path: Box<Path> , conf_path: Vec<String>) -> Self {
+    pub fn new(id: String, interval: u64, exe_path: String, log_path: Box<Path> , conf_path: Vec<String>) -> Self {
         Agent {
             id: id,
             interval: interval,
@@ -164,6 +164,7 @@ struct AgentOutput {
 // Other functions
 //
 
+// Internal function, it is used to read the stdout and stderr of agent
 fn read_buffer<T: Read>(reader: &mut BufReader<T>) -> Vec<AgentOutput> {
     const BUFFER_SIZE: usize = 128;
     let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
@@ -194,4 +195,21 @@ fn read_buffer<T: Read>(reader: &mut BufReader<T>) -> Vec<AgentOutput> {
     }
 
     return messages;
+}
+
+// This function can be called from a thread and it handle the agent running
+pub async fn setup_agent(agent: &mut Agent) {
+    loop {
+        if agent.status == AgentStatus::Ready {
+            if let Err(e) = agent.execute() {
+                eprintln!("Agent {} has failed, exit code: {:?}", agent.id, e);
+            }
+        }
+        else {
+            println!("Agent {} does not run due to its status is {}", agent.id, agent.status);
+        }
+        
+
+        tokio::time::sleep(tokio::time::Duration::new(agent.interval, 0)).await;
+    }
 }
