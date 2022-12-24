@@ -219,12 +219,12 @@ impl Hermes for HermesGrpc {
 
 pub async fn start_server(address: &String) {
     let hermes_grpc = HermesGrpc::default();
+    let hermes_service = HermesServer::new(hermes_grpc);
 
     println!("Listening for gRPC on {} address...", address);
     Server::builder()
         .accept_http1(true)
-        .layer(tonic_web::GrpcWebLayer::new())
-        .add_service(HermesServer::new(hermes_grpc))
+        .add_service(tonic_web::enable(hermes_service))
         .serve(address.parse().unwrap())
         .await
         .unwrap();
