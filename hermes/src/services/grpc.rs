@@ -222,6 +222,8 @@ pub async fn start_server(address: &String) {
 
     println!("Listening for gRPC on {} address...", address);
     Server::builder()
+        .accept_http1(true)
+        .layer(tonic_web::GrpcWebLayer::new())
         .add_service(HermesServer::new(hermes_grpc))
         .serve(address.parse().unwrap())
         .await
