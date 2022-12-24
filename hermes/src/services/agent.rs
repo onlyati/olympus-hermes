@@ -62,6 +62,7 @@ pub struct Agent {
     log_path: String,
     conf_path: Vec<String>,
     status: AgentStatus,
+    last_run: Option<String>,
 }
 
 impl Agent {
@@ -74,6 +75,7 @@ impl Agent {
             conf_path: conf_path,
             log_path: log_path,
             status: AgentStatus::Ready,
+            last_run: None,
         }
     }
 
@@ -85,6 +87,27 @@ impl Agent {
     // Get the agent id
     pub fn get_id(&self) -> &str {
         return &self.id[..];
+    }
+
+    // Get interval of agent
+    pub fn get_interval(&self) -> std::time::Duration {
+        return std::time::Duration::new(self.interval, 0);
+    }
+
+    // Get when it was run last time
+    pub fn get_last_run(&self) -> Option<&str> {
+        match &self.last_run {
+            Some(lr) => return Some(&lr[..]),
+            None => None,
+        }
+    }
+
+    // Update when agent was run last time
+    pub fn update_last_run(&mut self) {
+        let now = chrono::Local::now();
+        let now = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
+
+        self.last_run = Some(now);
     }
 
     // Forbid agent to run
@@ -219,7 +242,8 @@ pub async fn setup_agent(id: String) {
     loop {
         println!("Agent {} is starting...", id);
 
-        {
+        let status = {
+            let status: AgentStatus;
             let mut agents = AGENTS.write().unwrap();
             let agents = match &mut *agents {
                 Some(agents) => agents,
@@ -231,21 +255,21 @@ pub async fn setup_agent(id: String) {
 
             match agents.get_mut(&id) {
                 Some(agent) => {
-                    if agent.status != AgentStatus::Ready {
-                        println!("Agent {} id not Ready but {}", id, agent.status);
-                        continue;        
+                    if agent.status == AgentStatus::Ready {
+                        agent.status = AgentStatus::Running;
                     }
-
-                    agent.status = AgentStatus::Running;
+                    status = agent.status.clone();
                 }
                 None => {
                     eprintln!("Specified agent {} does not exist", id);
                     break;
                 }
             };
-        }
 
-        {
+            status
+        };
+
+        if status == AgentStatus::Running {
             let agents = AGENTS.read().unwrap();
             let agents = match &*agents {
                 Some(agents) => agents,
@@ -270,6 +294,9 @@ pub async fn setup_agent(id: String) {
                 }
             }
         }
+        else {
+            println!("Agent {} cannot run but {}", id, status);
+        }
 
         let interval = {
             let mut agents = AGENTS.write().unwrap();
@@ -283,7 +310,11 @@ pub async fn setup_agent(id: String) {
 
             match agents.get_mut(&id) {
                 Some(agent) => {
-                    agent.status = AgentStatus::Ready;
+                    agent.update_last_run();
+
+                    if agent.status != AgentStatus::Forbidden {
+                        agent.status = AgentStatus::Ready;
+                    }
                     agent.interval
                 },
                 None => {
