@@ -226,7 +226,8 @@ pub async fn start_server(address: &String) {
     let cors_layer = CorsLayer::new()
         .allow_methods(Any)
         .allow_headers(Any)
-        .allow_origin(Any);
+        .allow_origin(Any)
+        .expose_headers(Any);
 
     println!("Listening for gRPC on {} address...", address);
     Server::builder()
