@@ -1,5 +1,9 @@
 #![allow(dead_code)]
+
 use crate::DB;
+use crate::AGENTS;
+
+use super::agent::AgentStatus;
 
 /// ## Parse request
 /// 
@@ -15,7 +19,7 @@ pub fn parse_db_command(command: &str) -> Result<String, String> {
 
     let command_vec: Vec<&str> = command.split_whitespace().collect();
 
-    if command_vec.len() < 3 {
+    if command_vec.len() < 2 {
         if command == "help" {
             // Help on those, who are asking
             let response = String::from(concat!(
@@ -23,6 +27,10 @@ pub fn parse_db_command(command: &str) -> Result<String, String> {
                 "Get value of key:     get key('<key>') in <table>;\n",
                 "Delete pair:          delete key('<key>') in <table>;\n",
                 "Mask keys:            keys mask('<mask>') in <table>;\n",
+                "Running agent list:   agent list\n",
+                "Agent details:        agent get <id>\n",
+                "Enable agent:         agent allow <id>\n",
+                "Disable agent:        agent forbid <id>\n",
             ));
             return Ok(response);
         }
@@ -169,6 +177,95 @@ pub fn parse_db_command(command: &str) -> Result<String, String> {
                 list += "\n";
             }
             return Ok(list);
+        }
+    }
+
+    /*-------------------------------------------------------------------------------------------*/
+    /* Handle agents                                                                             */
+    /*-------------------------------------------------------------------------------------------*/
+    if command_vec[0] == "agent" {
+
+        if command_vec.len() == 2 {
+            if command_vec[1] == "list" {
+                let agents = AGENTS.read().unwrap();
+                let agents = match &*agents {
+                    Some(agents) => agents,
+                    None => return Ok(String::from("\n")),
+                };
+                
+                if agents.len() == 0 {
+                    return Ok(String::from("\n"));
+                }
+                else {
+                    let mut agent_list = String::new();
+                    for agent in agents.iter() {
+                        agent_list += &agent.0[..];
+                        agent_list += "\n";
+                    }
+                    return Ok(agent_list);
+                }
+            }
+        }
+
+        if command_vec.len() == 3 {
+            if command_vec[1] == "get" {
+                let agents = AGENTS.read().unwrap();
+                let agents = match &*agents {
+                    Some(agents) => agents,
+                    None => return Err(String::from("No agents were found\n")),
+                };
+
+                match agents.get(command_vec[2]) {
+                    Some(agent) => {
+                        let lr = match agent.get_last_run() {
+                            Some(s) => String::from(s),
+                            None => String::from("Never"),
+                        };
+                        return Ok(format!("id: {}\nStatus: {}\nLast run: {}\nInterval: {:?}\n", agent.get_id(), agent.get_status(), lr, agent.get_interval()));
+                    },
+                    None => return Err(String::from("No agent were found\n")),
+                }
+            }
+            else if command_vec[1] == "allow" {
+                let mut agents = AGENTS.write().unwrap();
+                let agents = match &mut *agents {
+                    Some(agents) => agents,
+                    None => return Err(String::from("No agents were found\n")),
+                };
+
+                match agents.get_mut(command_vec[2]) {
+                    Some(agent) => {
+                        agent.put_ready();
+                        if *agent.get_status() == AgentStatus::Ready{
+                            return Ok(String::from("\n"));
+                        }
+                        else {
+                            return Err(String::from("Failed to move agent into ready"));
+                        }
+                    },
+                    None => return Err(String::from("No agent were found\n")),
+                }
+            }
+            else if command_vec[1] == "forbid" {
+                let mut agents = AGENTS.write().unwrap();
+                let agents = match &mut *agents {
+                    Some(agents) => agents,
+                    None => return Err(String::from("No agents were found\n")),
+                };
+
+                match agents.get_mut(command_vec[2]) {
+                    Some(agent) => {
+                        agent.put_forbid();
+                        if *agent.get_status() == AgentStatus::Forbidden{
+                            return Ok(String::from("\n"));
+                        }
+                        else {
+                            return Err(String::from("Failed to move agent into forbidden"));
+                        }
+                    },
+                    None => return Err(String::from("No agent were found\n")),
+                }
+            }
         }
     }
 

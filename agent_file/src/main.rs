@@ -46,6 +46,7 @@ async fn main() {
     }
 
     // Try to connect to Hermes via gRPC port
+    println!("Connecting to Hermes via gRPC...");
     let address = config.get_hermes_address().clone().unwrap();
     let mut grpc_client = match HermesClient::connect(address).await {
         Ok(client) => client,
@@ -54,6 +55,7 @@ async fn main() {
             exit(2);
         },
     };
+    println!("Connected!");
 
     let mut final_rc = 0;
 

@@ -9,7 +9,7 @@ mod hermes {
 async fn main() {
     let mut joins: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
-    for j in 0..1 {
+    for j in 0..2 {
         let table = {
             if j % 4 == 0 {
                 "Report"

@@ -47,6 +47,7 @@ impl Hermes for HermesGrpc {
             value: pair.value,
             table: pair.table,
         };
+
         return Ok(Response::new(result));
     }
 
