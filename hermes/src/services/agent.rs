@@ -3,17 +3,18 @@
 use std::fmt;
 use std::fmt::Display;
 use std::io::{BufReader, Read, Write};
-use std::path::Path;
 use std::process::{Command, Stdio};
 
 use chrono::{Datelike, Timelike};
+
+use crate::AGENTS;
 
 //
 // Enums
 //
 
 /// Enum to represent current status of agent
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum AgentStatus {
     Ready,
     Running,
@@ -53,18 +54,19 @@ impl Display for AgentOutputType {
 //
 
 /// Struct for agent
+#[derive(Clone)]
 pub struct Agent {
     id: String,
     interval: u64,
     exe_path: String,
-    log_path: Box<Path>,
+    log_path: String,
     conf_path: Vec<String>,
     status: AgentStatus,
 }
 
 impl Agent {
     /// Create new Agent
-    pub fn new(id: String, interval: u64, exe_path: String, log_path: Box<Path> , conf_path: Vec<String>) -> Self {
+    pub fn new(id: String, interval: u64, exe_path: String, log_path: String , conf_path: Vec<String>) -> Self {
         Agent {
             id: id,
             interval: interval,
@@ -80,6 +82,11 @@ impl Agent {
         return &self.status;
     }
 
+    // Get the agent id
+    pub fn get_id(&self) -> &str {
+        return &self.id[..];
+    }
+
     // Forbid agent to run
     pub fn put_forbid(&mut self) {
         self.status = AgentStatus::Forbidden;
@@ -89,13 +96,7 @@ impl Agent {
         self.status = AgentStatus::Ready;
     }
 
-    pub fn execute(&mut self) -> Result<(), Option<i32>> {
-        if self.status != AgentStatus::Ready {
-            return Ok(());
-        }
-
-        self.status = AgentStatus::Running;
-
+    pub fn execute(&self) -> Result<(), Option<i32>> {
         let mut child = Command::new(&self.exe_path)
             .args(&self.conf_path)
             .stdout(Stdio::piped())
@@ -118,7 +119,6 @@ impl Agent {
         });
 
         let status = child.wait().unwrap();
-        self.status = AgentStatus::Ready;
 
         stdout.append(&mut stderr);
         stdout.sort_by(|a, b| a.time.cmp(&b.time));
@@ -136,7 +136,7 @@ impl Agent {
         };
 
         for msg in stdout {
-            match writeln!(&mut log_file, "{} {} {}", msg.time, msg.out_type, msg.text) {
+            match write!(&mut log_file, "{} {} {}", msg.time, msg.out_type, msg.text) {
                 Ok(_) => (),
                 Err(e) => {
                     eprintln!("Failed to wrrite log for {} agent due to: {}", self.id, e);
@@ -182,6 +182,7 @@ fn read_buffer<T: Read>(reader: &mut BufReader<T>) -> Vec<AgentOutput> {
             if c == b'\n' {
                 let now = chrono::Local::now();
                 let now = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
+                println!("[{} {}]", now, line);
                 messages.push(AgentOutput { 
                     time: now, 
                     text: line, 
@@ -198,18 +199,85 @@ fn read_buffer<T: Read>(reader: &mut BufReader<T>) -> Vec<AgentOutput> {
 }
 
 // This function can be called from a thread and it handle the agent running
-pub async fn setup_agent(agent: &mut Agent) {
+pub async fn setup_agent(id: String) {
     loop {
-        if agent.status == AgentStatus::Ready {
-            if let Err(e) = agent.execute() {
-                eprintln!("Agent {} has failed, exit code: {:?}", agent.id, e);
+        println!("Agent {} is starting...", id);
+
+        {
+            let mut agents = AGENTS.write().unwrap();
+            let agents = match &mut *agents {
+                Some(agents) => agents,
+                None => {
+                    eprintln!("No agent config alive");
+                    break;
+                }
+            };
+
+            match agents.get_mut(&id) {
+                Some(agent) => {
+                    if agent.status != AgentStatus::Ready {
+                        println!("Agent {} id not Ready but {}", id, agent.status);
+                        continue;        
+                    }
+
+                    agent.status = AgentStatus::Running;
+                }
+                None => {
+                    eprintln!("Specified agent {} does not exist", id);
+                    break;
+                }
+            };
+        }
+
+        {
+            let agents = AGENTS.read().unwrap();
+            let agents = match &*agents {
+                Some(agents) => agents,
+                None => {
+                    eprintln!("No agent config alive");
+                    break;
+                }
+            };
+
+            match agents.get(&id) {
+                Some(agent) => {
+                    match agent.execute() {
+                        Ok(_) => (),
+                        Err(e) => {
+                            eprintln!("Failed to execute agent {}, exit code {:?}", id, e);
+                        }
+                    };
+                }
+                None => {
+                    eprintln!("Specified agent {} does not exist", id);
+                    break;
+                }
             }
         }
-        else {
-            println!("Agent {} does not run due to its status is {}", agent.id, agent.status);
-        }
-        
 
-        tokio::time::sleep(tokio::time::Duration::new(agent.interval, 0)).await;
+        let interval = {
+            let mut agents = AGENTS.write().unwrap();
+            let agents = match &mut *agents {
+                Some(agents) => agents,
+                None => {
+                    eprintln!("No agent config alive");
+                    break;
+                }
+            };
+
+            match agents.get_mut(&id) {
+                Some(agent) => {
+                    agent.status = AgentStatus::Ready;
+                    agent.interval
+                },
+                None => {
+                    eprintln!("Specified agent {} does not exist", id);
+                    break;
+                },
+            }
+        };
+        
+        println!("Agent {} is ended", id);
+        tokio::time::sleep(tokio::time::Duration::new(interval, 0)).await;
     }
 }
