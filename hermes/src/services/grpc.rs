@@ -1,7 +1,9 @@
 use tonic::{transport::Server, Request, Response, Status};
+use tower_http::cors::Any;
 
 use hermes::hermes_server::{Hermes, HermesServer};
 use hermes::{SetPair, Key, TableName, Empty, Pair, KeyList, Table, TableList};
+use tower_http::cors::CorsLayer;
 
 use crate::DB;
 
@@ -221,15 +223,17 @@ pub async fn start_server(address: &String) {
     let hermes_grpc = HermesGrpc::default();
     let hermes_service = HermesServer::new(hermes_grpc);
 
-    let config = tonic_web::config()
-        .allow_all_origins()
-        .expose_headers(vec!["content-type", "grpc-accept-encoding", "x-user-agent"])
-        .enable(hermes_service);
+    let cors_layer = CorsLayer::new()
+        .allow_methods(Any)
+        .allow_headers(Any)
+        .allow_origin(Any);
 
     println!("Listening for gRPC on {} address...", address);
     Server::builder()
         .accept_http1(true)
-        .add_service(config)
+        .layer(cors_layer)
+        .layer(tonic_web::GrpcWebLayer::new())
+        .add_service(hermes_service)
         .serve(address.parse().unwrap())
         .await
         .unwrap();
