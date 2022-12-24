@@ -221,10 +221,15 @@ pub async fn start_server(address: &String) {
     let hermes_grpc = HermesGrpc::default();
     let hermes_service = HermesServer::new(hermes_grpc);
 
+    let config = tonic_web::config()
+        .allow_all_origins()
+        .expose_headers(vec!["content-type", "grpc-accept-encoding", "x-user-agent"])
+        .enable(hermes_service);
+
     println!("Listening for gRPC on {} address...", address);
     Server::builder()
         .accept_http1(true)
-        .add_service(tonic_web::enable(hermes_service))
+        .add_service(config)
         .serve(address.parse().unwrap())
         .await
         .unwrap();
