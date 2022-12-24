@@ -182,13 +182,29 @@ fn read_buffer<T: Read>(reader: &mut BufReader<T>) -> Vec<AgentOutput> {
             if c == b'\n' {
                 let now = chrono::Local::now();
                 let now = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
-                println!("[{} {}]", now, line);
-                messages.push(AgentOutput { 
-                    time: now, 
-                    text: line, 
-                    out_type: AgentOutputType::Info,
-                });
-                line = String::new();
+
+                let lines: Vec<&str> = line.split("\n").collect();
+                if lines.len() == 1 {
+                    messages.push(AgentOutput { 
+                        time: now.clone(), 
+                        text: line + "\n", 
+                        out_type: AgentOutputType::Info,
+                    });
+                    line = String::new();
+                }
+                else {
+                    for i in 0..lines.len() - 1 {
+                        let line = String::from(lines[i]);
+                        messages.push(AgentOutput { 
+                            time: now.clone(), 
+                            text: line + "\n", 
+                            out_type: AgentOutputType::Info,
+                        });
+                    }
+                    line = String::from(lines[lines.len() - 1]);
+                }
+
+                
                 continue;
             }
         }
