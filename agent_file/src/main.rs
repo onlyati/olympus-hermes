@@ -12,8 +12,18 @@ pub mod hermes {
     tonic::include_proto!("hermes");
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    rt.block_on(async move {
+        main_async().await;
+    });
+}
+
+
+async fn main_async() {
     // Measure runtime of script
     let start = std::time::Instant::now();
 

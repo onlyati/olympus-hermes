@@ -1,6 +1,5 @@
 use hermes::hermes_client::{HermesClient};
 use hermes::{SetPair, Pair};
-use tonic::codegen::http::request;
 
 use std::process::exit;
 use std::path::Path;
