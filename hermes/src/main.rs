@@ -18,8 +18,8 @@ static VERSION: &str = "v.0.1.3";
 static DB: RwLock<Option<Database>> = RwLock::new(None);
 static AGENTS: RwLock<Option<HashMap<String, Agent>>> = RwLock::new(None);
 
-#[tokio::main]
-async fn main() 
+
+fn main() 
 {
     // Display version number to make sure which version is starting
     println!("Starting {} version is in progress...", VERSION);
@@ -43,12 +43,20 @@ async fn main()
     }
 
     // Start gRPC server
-    println!("Starting gRPC server...");
     match config.get("grpc_addr") {
         Some(addr) => {
             let addr = addr.clone();
-            tokio::spawn(async move {
-                grpc::start_server(&addr).await;
+            let core_num = config.get("threads").unwrap().parse::<usize>().unwrap();
+            std::thread::spawn(move || {
+                println!("Starting gRPC server...");
+                let rt = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .worker_threads(core_num)
+                .build()
+                .unwrap();
+                rt.block_on(async move {
+                    grpc::start_server(&addr).await;
+                });
             });
         },
         None => println!("Address for gRPC is not specified, not started"),
@@ -104,10 +112,18 @@ async fn main()
 fn setup_agents(config: HashMap<String, String>, init_sleep: Option<&String>) {
     let mut ids: HashMap<String, u64> = HashMap::new();
 
-    let base_dir = match config.get("agent_dir") {
+    let base_dir = match config.get("agent_bin_dir") {
         Some(p) => p,
         None => {
-            eprintln!("Did not found agent_dir in config file, no agent will be started");
+            eprintln!("Did not found agent_bin_dir in config file, no agent will be started");
+            return;
+        },
+    };
+
+    let conf_dir = match config.get("agent_conf_dir") {
+        Some(p) => p,
+        None => {
+            eprintln!("Did not found agent_conf_dir in config file, no agent will be started");
             return;
         },
     };
@@ -149,10 +165,10 @@ fn setup_agents(config: HashMap<String, String>, init_sleep: Option<&String>) {
     for item in &ids {
         let exe_path = format!("{}/agent_{}.d/agent_{}", base_dir, item.0, item.0);
         let conf_path = vec![
-            format!("{}/common.conf", base_dir),
-            format!("{}/agent_{}.d/agent_{}.conf", base_dir, item.0, item.0)
+            format!("{}/common.conf", conf_dir),
+            format!("{}/agent_{}.d/agent_{}.conf", conf_dir, item.0, item.0)
         ];
-        let log_path = format!("{}/agent_{}.d/agent_{}.log", base_dir, item.0, item.0);
+        let log_path = format!("{}/agent_{}.d/agent_{}.log", conf_dir, item.0, item.0);
 
         let agent = Agent::new(item.0.clone(), item.1.clone(), exe_path, log_path, conf_path);
 
@@ -183,7 +199,7 @@ fn setup_agents(config: HashMap<String, String>, init_sleep: Option<&String>) {
     }
 
     for item in ids {
-        tokio::task::spawn_blocking(move || {
+        std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
