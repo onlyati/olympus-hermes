@@ -2,7 +2,7 @@
 
 use std::fmt;
 use std::fmt::Display;
-use std::io::{BufReader, Read, Write};
+use std::io::{BufReader, Read, Write, BufRead};
 use std::process::{Command, Stdio};
 
 use chrono::{Datelike, Timelike};
@@ -33,7 +33,7 @@ impl Display for AgentStatus {
 }
 
 /// Enum to represent agent message output type
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum AgentOutputType {
     Info,
     Error,
@@ -133,11 +133,11 @@ impl Agent {
         std::thread::scope(|spawner| {
             spawner.spawn(|| {
                 let pipe = child.stdout.as_mut().unwrap();
-                stdout = read_buffer(&mut BufReader::new(pipe));
+                stdout = read_buffer(&mut BufReader::new(pipe), AgentOutputType::Info);
             });
             spawner.spawn(|| {
                 let pipe = child.stderr.as_mut().unwrap();
-                stderr = read_buffer(&mut BufReader::new(pipe));
+                stderr = read_buffer(&mut BufReader::new(pipe), AgentOutputType::Error);
             });
         });
 
@@ -188,50 +188,24 @@ struct AgentOutput {
 //
 
 // Internal function, it is used to read the stdout and stderr of agent
-fn read_buffer<T: Read>(reader: &mut BufReader<T>) -> Vec<AgentOutput> {
-    const BUFFER_SIZE: usize = 128;
-    let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
+fn read_buffer<T: Read>(reader: &mut BufReader<T>, out_type: AgentOutputType) -> Vec<AgentOutput> {
     let mut line = String::new();
     let mut messages: Vec<AgentOutput> = Vec::new();
 
-    while let Ok(size) = reader.read(&mut buffer) {
+    while let Ok(size) = reader.read_line(&mut line) {
         if size == 0 {
             break;
         }
 
-        line += String::from_utf8_lossy(&buffer[0..size]).as_ref();
+        let now = chrono::Local::now();
+        let now = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
+        messages.push(AgentOutput { 
+            time: now, 
+            text: line, 
+            out_type: out_type 
+        });
 
-        for c in buffer {
-            if c == b'\n' {
-                let now = chrono::Local::now();
-                let now = format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
-
-                let lines: Vec<&str> = line.split("\n").collect();
-                if lines.len() == 1 {
-                    messages.push(AgentOutput { 
-                        time: now.clone(), 
-                        text: line + "\n", 
-                        out_type: AgentOutputType::Info,
-                    });
-                    line = String::new();
-                }
-                else {
-                    for i in 0..lines.len() - 1 {
-                        let line = String::from(lines[i]);
-                        messages.push(AgentOutput { 
-                            time: now.clone(), 
-                            text: line + "\n", 
-                            out_type: AgentOutputType::Info,
-                        });
-                    }
-                    line = String::from(lines[lines.len() - 1]);
-                }
-
-                
-                continue;
-            }
-        }
-        buffer = [0; BUFFER_SIZE];
+        line = String::new();
     }
 
     return messages;
