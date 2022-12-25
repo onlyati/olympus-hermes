@@ -240,7 +240,7 @@ pub fn parse_db_command(command: &str) -> Result<String, String> {
                             return Ok(String::from("\n"));
                         }
                         else {
-                            return Err(String::from("Failed to move agent into ready"));
+                            return Err(String::from("Failed to move agent into ready\n"));
                         }
                     },
                     None => return Err(String::from("No agent were found\n")),
@@ -260,9 +260,36 @@ pub fn parse_db_command(command: &str) -> Result<String, String> {
                             return Ok(String::from("\n"));
                         }
                         else {
-                            return Err(String::from("Failed to move agent into forbidden"));
+                            return Err(String::from("Failed to move agent into forbidden\n"));
                         }
                     },
+                    None => return Err(String::from("No agent were found\n")),
+                }
+            }
+            else if command_vec[1] == "run" {
+                let mut agents = AGENTS.write().unwrap();
+                let agents = match &mut *agents {
+                    Some(agents) => agents,
+                    None => return Err(String::from("No agents were found\n")),
+                };
+
+                match agents.get_mut(command_vec[2]) {
+                    Some(agent) => {
+                        if *agent.get_status() != AgentStatus::Ready {
+                            return Err(String::from("Agent is not ready to run\n"));
+                        }
+                        agent.put_running();
+
+                        let msg = match agent.execute() {
+                            Ok(_) => String::from("Agent run successfully\n"),
+                            Err(e) => format!("Agent failed to run exit code is {:?}", e),
+                        };
+
+                        agent.update_last_run();
+                        agent.put_ready();
+
+                        return Ok(msg);
+                    }
                     None => return Err(String::from("No agent were found\n")),
                 }
             }
