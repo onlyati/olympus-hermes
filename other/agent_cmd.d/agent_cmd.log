@@ -1,0 +1,25 @@
+2022-12-25 21:00:46 I Successfully processed config file!
+2022-12-25 21:00:46 I Connecting to Hermes via gRPC...
+2022-12-25 21:00:46 I Connected!
+2022-12-25 21:00:46 I Execute: /usr/bin/df ["-k"]
+2022-12-25 21:00:46 I Command has been processed: /usr/bin/df ["-k"] -> CmdAgent space-usage
+2022-12-25 21:00:46 I Execute: /usr/bin/free ["--mega"]
+2022-12-25 21:00:46 I Command has been processed: /usr/bin/free ["--mega"] -> CmdAgent memory-usage
+2022-12-25 21:00:46 I Execute: /usr/bin/date []
+2022-12-25 21:00:46 I Command has been processed: /usr/bin/date [] -> CmdAgent time
+2022-12-25 21:00:46 I Agent is ended under 29.227472ms time.
+2022-12-25 21:23:53 I Successfully processed config file!
+2022-12-25 21:23:53 I Connecting to Hermes via gRPC...
+2022-12-25 21:23:53 I Connected!
+2022-12-25 21:23:53 I Agent is ended under 1.547794ms time.
+2022-12-25 21:25:20 I Successfully processed config file!
+2022-12-25 21:25:20 I Connecting to Hermes via gRPC...
+2022-12-25 21:25:20 I Connected!
+2022-12-25 21:25:20 I Agent is ended under 1.521323ms time.
+2022-12-25 21:33:00 I Successfully processed config file!
+2022-12-25 21:33:00 I Connecting to Hermes via gRPC...
+2022-12-25 21:33:00 I Connected!
+2022-12-25 21:33:00 I Command has been processed: /usr/bin/df ["-k"] -> CmdAgent space-usage
+2022-12-25 21:33:00 I Command has been processed: /usr/bin/free ["--mega"] -> CmdAgent memory-usage
+2022-12-25 21:33:00 I Command has been processed: /usr/bin/date [] -> CmdAgent time
+2022-12-25 21:33:00 I Agent is ended under 11.726779ms time.

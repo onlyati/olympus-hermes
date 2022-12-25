@@ -222,7 +222,9 @@ pub fn parse_db_command(command: &str) -> Result<String, String> {
                             Some(s) => String::from(s),
                             None => String::from("Never"),
                         };
-                        return Ok(format!("id: {}\nStatus: {}\nLast run: {}\nInterval: {:?}\n", agent.get_id(), agent.get_status(), lr, agent.get_interval()));
+
+                        let (cmd_exe, conf_list) = agent.get_cmd_info();
+                        return Ok(format!("id: {}\nStatus: {}\nCommand: {}\nConfigurations: {:?}\nLast run: {}\nInterval: {:?}\n", agent.get_id(), agent.get_status(), cmd_exe, conf_list, lr, agent.get_interval()));
                     },
                     None => return Err(String::from("No agent were found\n")),
                 }

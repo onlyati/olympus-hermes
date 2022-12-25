@@ -71,7 +71,15 @@ async fn main_async() {
 
     // Finally, read every file from config then try to set the key-value pair in Hermes
     for file in config.get_file_list() {
-        let (path, table, key) = file.get_info();
+        let (path, key) = file.get_info();
+        let table = config.get_table_name();
+        let table = match table {
+            Some(t) => t,
+            None => {
+                eprintln!("Table is not specified in config!");
+                exit(2);
+            }
+        };
 
         let path = Path::new(path);
         let content = match fs::read_to_string(path) {

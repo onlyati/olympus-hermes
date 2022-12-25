@@ -102,6 +102,10 @@ impl Agent {
         }
     }
 
+    pub fn get_cmd_info(&self) -> (&String, &Vec<String>) {
+        return (&self.exe_path, &self.conf_path);
+    }
+
     // Update when agent was run last time
     pub fn update_last_run(&mut self) {
         let now = chrono::Local::now();
