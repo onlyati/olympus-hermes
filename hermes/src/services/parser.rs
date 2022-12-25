@@ -31,6 +31,7 @@ pub fn parse_db_command(command: &str) -> Result<String, String> {
                 "Agent details:        agent get <id>\n",
                 "Enable agent:         agent allow <id>\n",
                 "Disable agent:        agent forbid <id>\n",
+                "Run agent manually:   agent run <id>\n",
             ));
             return Ok(response);
         }
