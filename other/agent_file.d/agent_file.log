@@ -1,0 +1,70 @@
+2022-12-25 21:00:46 I Successfully processed config file!
+2022-12-25 21:00:46 I Connecting to Hermes via gRPC...
+2022-12-25 21:00:46 I Connected!
+2022-12-25 21:00:46 I File has been processed: /usr/share/olympus/scripts/system/memory-check.py -> FileAgent system-memory-check
+2022-12-25 21:00:46 I File has been processed: /usr/share/olympus/scripts/system/mount-check.py -> FileAgent system-mount-check
+2022-12-25 21:00:46 I File has been processed: /usr/share/olympus/scripts/system/service-check.py -> FileAgent system-service-check
+2022-12-25 21:00:46 I File has been processed: /usr/share/olympus/scripts/system/update-check.py -> FileAgent system-update-check
+2022-12-25 21:00:46 I File has been processed: /usr/share/olympus/scripts/utils/olympus-util.py -> FileAgent utils-olympus-util
+2022-12-25 21:00:46 I File has been processed: /usr/share/olympus/scripts/utils/port-list.py -> FileAgent utils-port-list
+2022-12-25 21:00:46 I Agent is ended under 19.274148ms time.
+2022-12-25 21:01:15 I Successfully processed config file!
+2022-12-25 21:01:15 I Connecting to Hermes via gRPC...
+2022-12-25 21:01:15 I Connected!
+2022-12-25 21:01:15 I File has been processed: /usr/share/olympus/scripts/system/memory-check.py -> FileAgent system-memory-check
+2022-12-25 21:01:15 I File has been processed: /usr/share/olympus/scripts/system/mount-check.py -> FileAgent system-mount-check
+2022-12-25 21:01:15 I File has been processed: /usr/share/olympus/scripts/system/service-check.py -> FileAgent system-service-check
+2022-12-25 21:01:15 I File has been processed: /usr/share/olympus/scripts/system/update-check.py -> FileAgent system-update-check
+2022-12-25 21:01:15 I File has been processed: /usr/share/olympus/scripts/utils/olympus-util.py -> FileAgent utils-olympus-util
+2022-12-25 21:01:15 I File has been processed: /usr/share/olympus/scripts/utils/port-list.py -> FileAgent utils-port-list
+2022-12-25 21:01:15 I Agent is ended under 24.056672ms time.
+2022-12-25 21:01:18 I Successfully processed config file!
+2022-12-25 21:01:18 I Connecting to Hermes via gRPC...
+2022-12-25 21:01:18 I Connected!
+2022-12-25 21:01:18 I File has been processed: /usr/share/olympus/scripts/system/memory-check.py -> FileAgent system-memory-check
+2022-12-25 21:01:18 I File has been processed: /usr/share/olympus/scripts/system/mount-check.py -> FileAgent system-mount-check
+2022-12-25 21:01:18 I File has been processed: /usr/share/olympus/scripts/system/service-check.py -> FileAgent system-service-check
+2022-12-25 21:01:18 I File has been processed: /usr/share/olympus/scripts/system/update-check.py -> FileAgent system-update-check
+2022-12-25 21:01:18 I File has been processed: /usr/share/olympus/scripts/utils/olympus-util.py -> FileAgent utils-olympus-util
+2022-12-25 21:01:18 I File has been processed: /usr/share/olympus/scripts/utils/port-list.py -> FileAgent utils-port-list
+2022-12-25 21:01:18 I Agent is ended under 13.500881ms time.
+2022-12-25 21:15:55 I Successfully processed config file!
+2022-12-25 21:15:55 I Connecting to Hermes via gRPC...
+2022-12-25 21:15:55 I Connected!
+2022-12-25 21:15:55 I File has been processed: /usr/share/olympus/scripts/system/memory-check.py -> FileAgent system-memory-check
+2022-12-25 21:15:55 I File has been processed: /usr/share/olympus/scripts/system/mount-check.py -> FileAgent system-mount-check
+2022-12-25 21:15:55 I File has been processed: /usr/share/olympus/scripts/system/service-check.py -> FileAgent system-service-check
+2022-12-25 21:15:55 I File has been processed: /usr/share/olympus/scripts/system/update-check.py -> FileAgent system-update-check
+2022-12-25 21:15:55 I File has been processed: /usr/share/olympus/scripts/utils/olympus-util.py -> FileAgent utils-olympus-util
+2022-12-25 21:15:55 I File has been processed: /usr/share/olympus/scripts/utils/port-list.py -> FileAgent utils-port-list
+2022-12-25 21:15:55 I Agent is ended under 27.569689ms time.
+2022-12-25 21:23:53 I Successfully processed config file!
+2022-12-25 21:23:53 I Connecting to Hermes via gRPC...
+2022-12-25 21:23:53 I Connected!
+2022-12-25 21:23:53 I File has been processed: /usr/share/olympus/scripts/system/memory-check.py -> FileAgent system-memory-check
+2022-12-25 21:23:53 I File has been processed: /usr/share/olympus/scripts/system/mount-check.py -> FileAgent system-mount-check
+2022-12-25 21:23:53 I File has been processed: /usr/share/olympus/scripts/system/service-check.py -> FileAgent system-service-check
+2022-12-25 21:23:53 I File has been processed: /usr/share/olympus/scripts/system/update-check.py -> FileAgent system-update-check
+2022-12-25 21:23:53 I File has been processed: /usr/share/olympus/scripts/utils/olympus-util.py -> FileAgent utils-olympus-util
+2022-12-25 21:23:53 I File has been processed: /usr/share/olympus/scripts/utils/port-list.py -> FileAgent utils-port-list
+2022-12-25 21:23:53 I Agent is ended under 21.705085ms time.
+2022-12-25 21:25:20 I Successfully processed config file!
+2022-12-25 21:25:20 I Connecting to Hermes via gRPC...
+2022-12-25 21:25:20 I Connected!
+2022-12-25 21:25:20 I File has been processed: /usr/share/olympus/scripts/system/memory-check.py -> FileAgent system-memory-check
+2022-12-25 21:25:20 I File has been processed: /usr/share/olympus/scripts/system/mount-check.py -> FileAgent system-mount-check
+2022-12-25 21:25:20 I File has been processed: /usr/share/olympus/scripts/system/service-check.py -> FileAgent system-service-check
+2022-12-25 21:25:20 I File has been processed: /usr/share/olympus/scripts/system/update-check.py -> FileAgent system-update-check
+2022-12-25 21:25:20 I File has been processed: /usr/share/olympus/scripts/utils/olympus-util.py -> FileAgent utils-olympus-util
+2022-12-25 21:25:20 I File has been processed: /usr/share/olympus/scripts/utils/port-list.py -> FileAgent utils-port-list
+2022-12-25 21:25:20 I Agent is ended under 27.231981ms time.
+2022-12-25 21:33:00 I Successfully processed config file!
+2022-12-25 21:33:00 I Connecting to Hermes via gRPC...
+2022-12-25 21:33:00 I Connected!
+2022-12-25 21:33:00 I File has been processed: /usr/share/olympus/scripts/system/memory-check.py -> FileAgent system-memory-check
+2022-12-25 21:33:00 I File has been processed: /usr/share/olympus/scripts/system/mount-check.py -> FileAgent system-mount-check
+2022-12-25 21:33:00 I File has been processed: /usr/share/olympus/scripts/system/service-check.py -> FileAgent system-service-check
+2022-12-25 21:33:00 I File has been processed: /usr/share/olympus/scripts/system/update-check.py -> FileAgent system-update-check
+2022-12-25 21:33:00 I File has been processed: /usr/share/olympus/scripts/utils/olympus-util.py -> FileAgent utils-olympus-util
+2022-12-25 21:33:00 I File has been processed: /usr/share/olympus/scripts/utils/port-list.py -> FileAgent utils-port-list
+2022-12-25 21:33:00 I Agent is ended under 12.6427ms time.

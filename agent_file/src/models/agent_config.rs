@@ -5,6 +5,7 @@ use std::path::Path;
 
 pub struct Config {
     hermes_address: Option<String>,
+    table_name: Option<String>,
     file_list: Vec<File>,
 }
 
@@ -13,6 +14,7 @@ impl Config {
     pub fn new() -> Self {
         Config {
             hermes_address: None,
+            table_name: None,
             file_list: Vec::new(),
         }
     }
@@ -39,14 +41,14 @@ impl Config {
         // Parse the read string into vector per line, then filter the information contained lines
         let config: Vec<&str> = whole_config.split("\n").collect();
         let config: Vec<String> = config.iter()
-            .filter(|x| x.starts_with("hermes_address") || x.starts_with("file_"))
+            .filter(|x| x.starts_with("server.grpc.address") || x.starts_with("table") || x.starts_with("key."))
             .map(|x| String::from(x.clone()))
             .collect();
 
         // Process properties in config file:
         // 1. Split at '=' character
         //    a. If result lenght is less than 2, then error, go next line
-        // 2. If property is "hermes_address" then save it, then go next line
+        // 2. If property is "server.grpc.address" then save it, then go next line
         // 3. Split property at '_' character, format must be the followig: file_<table-name>_<key-name>
         //    a. If it is proper, then save it
         //    b. If does not fit for format, then error
@@ -61,24 +63,34 @@ impl Config {
                 continue;
             }
 
-            if attrs[0] == "hermes_address" {
+            if attrs[0] == "server.grpc.address" {
                 self.hermes_address = Some(attrs[1].to_string());
                 continue;
             }
+
+            if attrs[0] == "table" {
+                self.table_name = Some(attrs[1].to_string());
+                continue;
+            }
             
-            let prop: Vec<&str> = attrs[0].split("_")
+            // Check that it is a key then parse
+            let prop: Vec<&str> = attrs[0].split(".")
                 .collect();
 
-            if prop.len() < 3 {
+            if prop.len() < 2 {
                 errors += format!("WARNING: Property is not properly specified: {}", c).as_str();
                 continue;
             }
 
-            self.file_list.push(File::new(attrs[1], prop[1], prop[2]));
+            if prop[0] != "key" {
+                continue;
+            }
+
+            self.file_list.push(File::new(attrs[1], prop[1]));
         }
 
         if let None = self.hermes_address {
-            errors += "Attribute, hermes_address, is not specified\n";
+            errors += "Attribute, server.grpc.address, is not specified\n";
         }
 
         if errors.is_empty() {
@@ -97,27 +109,29 @@ impl Config {
     pub fn get_file_list(&self) -> &Vec<File> {
         return &self.file_list;
     }
+
+    pub fn get_table_name(&self) -> &Option<String> {
+        return &&self.table_name;
+    }
 }
 
 #[derive(Debug)]
 pub struct File {
     path: String,
-    hermes_table: String,
     hermes_key: String,
 }
 
 impl File {
     /// Create new file
-    fn new(path: &str, table: &str, key: &str) -> Self {
+    fn new(path: &str, key: &str) -> Self {
         File {
             path: String::from(path),
             hermes_key: String::from(key),
-            hermes_table: String::from(table),
         }
     }
 
     /// Get information about file
-    pub fn get_info(&self) -> (&String, &String, &String) {
-        return (&self.path, &self.hermes_table, &self.hermes_key);
+    pub fn get_info(&self) -> (&String, &String) {
+        return (&self.path, &self.hermes_key);
     }
 }

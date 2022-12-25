@@ -43,10 +43,10 @@ fn main()
     }
 
     // Start gRPC server
-    match config.get("grpc_addr") {
+    match config.get("host.grpc.address") {
         Some(addr) => {
             let addr = addr.clone();
-            let core_num = config.get("threads").unwrap().parse::<usize>().unwrap();
+            let core_num = config.get("options.threads").unwrap().parse::<usize>().unwrap();
             std::thread::spawn(move || {
                 println!("Starting gRPC server...");
                 let rt = tokio::runtime::Builder::new_multi_thread()
@@ -64,19 +64,26 @@ fn main()
 
     // Start agents
     println!("Checking for agents...");
-    let agent_conf: HashMap<String, String> = config.iter()
-        .filter(|x| x.0.starts_with("agent_"))
-        .map(|x| (x.0.clone(), x.1.clone()))
-        .collect();
-    if agent_conf.len() == 0 {
-        println!("No agent related config found!");
-    }
-    else {
-        setup_agents(agent_conf, config.get("agent_initial_delay"));
+    match config.get("agent.enable") {
+        Some(v) => {
+            if v == "yes" {
+                let agent_conf: HashMap<String, String> = config.iter()
+                    .filter(|x| x.0.starts_with("agent."))
+                    .map(|x| (x.0.clone(), x.1.clone()))
+                    .collect();
+                if agent_conf.len() == 0 {
+                    println!("No agent related config found!");
+                }
+                else {
+                    setup_agents(agent_conf, config.get("agent.delay"));
+                }
+            }
+        },
+        None => println!("Agent function is disabled"),
     }
 
     // Execute background worker threads for TCP stream
-    let core_num = config.get("threads").unwrap().parse::<usize>().unwrap();
+    let core_num = config.get("options.threads").unwrap().parse::<usize>().unwrap();
     let stream_workers = match Pool::new(core_num) {
         Ok(pool) => pool,
         Err(e) => {
@@ -86,7 +93,7 @@ fn main()
     };
 
     // Bind TCPIP address
-    let addr = config.get("address").unwrap();
+    let addr = config.get("host.classic.address").unwrap();
     println!("Bind socket to '{}' address", addr);
     let listener = match TcpListener::bind(addr) {
         Ok(listener) => listener,
@@ -112,7 +119,7 @@ fn main()
 fn setup_agents(config: HashMap<String, String>, init_sleep: Option<&String>) {
     let mut ids: HashMap<String, u64> = HashMap::new();
 
-    let base_dir = match config.get("agent_bin_dir") {
+    let base_dir = match config.get("agent.dir.bin") {
         Some(p) => p,
         None => {
             eprintln!("Did not found agent_bin_dir in config file, no agent will be started");
@@ -120,7 +127,7 @@ fn setup_agents(config: HashMap<String, String>, init_sleep: Option<&String>) {
         },
     };
 
-    let conf_dir = match config.get("agent_conf_dir") {
+    let conf_dir = match config.get("agent.dir.conf") {
         Some(p) => p,
         None => {
             eprintln!("Did not found agent_conf_dir in config file, no agent will be started");
@@ -145,7 +152,7 @@ fn setup_agents(config: HashMap<String, String>, init_sleep: Option<&String>) {
     };
 
     for item in &config {
-        let props: Vec<&str> = item.0.split("_").collect();
+        let props: Vec<&str> = item.0.split(".").collect();
 
         if props.len() == 3 {
             if props[0] == "agent" && props[2] == "interval" {
@@ -232,7 +239,7 @@ fn initialize_db(config: &HashMap<String, String>) -> Result<(), String> {
         };
     }
 
-    match config.get("init_data") {
+    match config.get("init.data") {
         Some(value) => {
             println!("Read initial data from {} file", value);
             let path = std::path::Path::new(value);
@@ -281,9 +288,9 @@ fn read_config() -> Result<HashMap<String, String>, String> {
         Err(e) => return Err(format!("Error during config reading: {} {}", args[1], e)),
     };
 
-    if let None = config.get("threads") {
+    if let None = config.get("options.threads") {
         if let Some(n) = number_of_cores() {
-            config.insert(String::from("threads"), n);
+            config.insert(String::from("options.threads"), n);
         }
     }
 
@@ -306,11 +313,11 @@ fn read_config() -> Result<HashMap<String, String>, String> {
 fn validate_settings(settings: &HashMap<String, String>) -> Result<(), String> {
     let mut errors = String::new();
 
-    if let None = settings.get("address") {
+    if let None = settings.get("host.classic.address") {
         errors += "ERROR in config: Field 'address' is missing\n";
     }
 
-    if let None = settings.get("threads") {
+    if let None = settings.get("options.threads") {
         errors += "ERROR in config: Field 'threads' is missing or couldn't fetch from /proc/cpuinfo\n";
     }
 

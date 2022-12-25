@@ -70,7 +70,14 @@ async fn main_async() {
 
     // Finally, read every file from config then try to set the key-value pair in Hermes
     for cmd in config.get_cmd_list() {
-        let (cmd_bin, args, table, key) = cmd.get_info();
+        let (cmd_bin, args, key) = cmd.get_info();
+        let table = match config.get_table_name() {
+            Some(t) => t,
+            None => {
+                eprintln!("Table is not specified in config file");
+                exit(2);
+            }
+        };
 
         let output = cmd_executor::execute(cmd_bin.clone(), args.clone());
 
