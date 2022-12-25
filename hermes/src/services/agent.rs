@@ -119,6 +119,10 @@ impl Agent {
         self.status = AgentStatus::Ready;
     }
 
+    pub fn put_running(&mut self) {
+        self.status = AgentStatus::Running;
+    }
+
     pub fn execute(&self) -> Result<(), Option<i32>> {
         let mut child = Command::new(&self.exe_path)
             .args(&self.conf_path)
