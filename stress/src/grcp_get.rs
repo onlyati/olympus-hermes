@@ -28,7 +28,7 @@ async fn main() {
         let t1 = tokio::spawn(async move {
             let mut times: Vec<u128> = Vec::with_capacity(500_000 * std::mem::size_of::<u128>());
             let whole_now = std::time::Instant::now();
-            let mut client = HermesClient::connect("http://0.0.0.0:9099").await.unwrap();
+            let mut client = HermesClient::connect("http://127.0.0.1:3031").await.unwrap();
 
             for i in 0..500_000 {
                 let pair = Key {

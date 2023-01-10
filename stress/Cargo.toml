@@ -20,7 +20,7 @@ path = "src/grcp_get.rs"
 [dependencies]
 tonic = "0.8"
 prost = "0.11"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.24.1", features = ["macros", "rt-multi-thread"] }
 
 [build-dependencies]
 tonic-build = "0.8"

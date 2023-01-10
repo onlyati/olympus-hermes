@@ -68,3 +68,23 @@
 2022-12-25 21:33:00 I File has been processed: /usr/share/olympus/scripts/utils/olympus-util.py -> FileAgent utils-olympus-util
 2022-12-25 21:33:00 I File has been processed: /usr/share/olympus/scripts/utils/port-list.py -> FileAgent utils-port-list
 2022-12-25 21:33:00 I Agent is ended under 12.6427ms time.
+2023-01-10 20:08:06 I Successfully processed config file!
+2023-01-10 20:08:06 I Connecting to Hermes via gRPC...
+2023-01-10 20:08:07 I Connected!
+2023-01-10 20:08:07 I File has been processed: /usr/share/olympus/scripts/system/memory-check.py -> FileAgent system-memory-check
+2023-01-10 20:08:07 I File has been processed: /usr/share/olympus/scripts/system/mount-check.py -> FileAgent system-mount-check
+2023-01-10 20:08:07 I File has been processed: /usr/share/olympus/scripts/system/service-check.py -> FileAgent system-service-check
+2023-01-10 20:08:07 I File has been processed: /usr/share/olympus/scripts/system/update-check.py -> FileAgent system-update-check
+2023-01-10 20:08:07 I File has been processed: /usr/share/olympus/scripts/utils/olympus-util.py -> FileAgent utils-olympus-util
+2023-01-10 20:08:07 I File has been processed: /usr/share/olympus/scripts/utils/port-list.py -> FileAgent utils-port-list
+2023-01-10 20:08:07 I Agent is ended under 40.967091ms time.
+2023-01-10 20:18:07 I Successfully processed config file!
+2023-01-10 20:18:07 I Connecting to Hermes via gRPC...
+2023-01-10 20:18:07 I Connected!
+2023-01-10 20:18:07 I File has been processed: /usr/share/olympus/scripts/system/memory-check.py -> FileAgent system-memory-check
+2023-01-10 20:18:07 I File has been processed: /usr/share/olympus/scripts/system/mount-check.py -> FileAgent system-mount-check
+2023-01-10 20:18:07 I File has been processed: /usr/share/olympus/scripts/system/service-check.py -> FileAgent system-service-check
+2023-01-10 20:18:07 I File has been processed: /usr/share/olympus/scripts/system/update-check.py -> FileAgent system-update-check
+2023-01-10 20:18:07 I File has been processed: /usr/share/olympus/scripts/utils/olympus-util.py -> FileAgent utils-olympus-util
+2023-01-10 20:18:07 I File has been processed: /usr/share/olympus/scripts/utils/port-list.py -> FileAgent utils-port-list
+2023-01-10 20:18:07 I Agent is ended under 11.876814ms time.
