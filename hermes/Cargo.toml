@@ -7,12 +7,14 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4"
-onlyati_config = { git = "https://gitlab.atihome.lan/rust-libs/onlyati-config", tag = "latest" }
+onlyati_config = { git = "https://git.thinkaboutit.tech/PublicProjects/config-rs", tag = "latest" }
+onlyati_datastore = { git = "https://git.thinkaboutit.tech/PublicProjects/datastore-rs" }
 tonic = "0.8.3"
 tonic-web = "0.5"
 prost = "0.11"
-tokio = { version = "1.24.1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.24.1", features = ["macros", "rt-multi-thread", "fs", "sync", "time"] }
 tower-http = { version = "0.3.5", features = ["cors"] }
+bytes = "1.4.0"
 
 [build-dependencies]
 tonic-build = "0.8"
