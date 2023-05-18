@@ -132,7 +132,6 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
     println!("gRPC interface on {} is starting...", address);
     Server::builder()
         .accept_http1(true)
-        .layer(tonic_web::GrpcWebLayer::new())
         .add_service(hermes_service)
         .serve(address.parse().unwrap())
         .await
