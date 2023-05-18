@@ -1,8 +1,9 @@
+// External dependencies
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use std::thread::JoinHandle;
 
+// Internal dependecies
 use onlyati_datastore::enums::DatabaseAction;
-
 use crate::traits::ApplicationInterface;
 
 mod macros;

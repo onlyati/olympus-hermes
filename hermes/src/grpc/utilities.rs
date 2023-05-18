@@ -1,26 +1,30 @@
+// External depencies
 use std::sync::{mpsc::Sender, Arc, Mutex};
-
 use tonic::{transport::Server, Request, Response, Status};
 
+// Internal depencies
 use hermes::hermes_server::{Hermes, HermesServer};
 use hermes::{Empty, Key, KeyList, Pair};
-
 use onlyati_datastore::{enums::DatabaseAction, enums::ValueType, utilities};
 
+// Import macros
 use super::macros::{
     check_self_sender, return_client_error, return_ok_with_value, return_server_error,
     send_data_request,
 };
 
+// Generate structs for gRPC
 mod hermes {
     tonic::include_proto!("hermes");
 }
 
+/// Struct that is injected into every gRPC endpoint
 #[derive(Debug, Default)]
 struct HermesGrpc {
     data_sender: Option<Arc<Mutex<Sender<DatabaseAction>>>>,
 }
 
+/// gRPC endpoints
 #[tonic::async_trait]
 impl Hermes for HermesGrpc {
     /// Endpoint for SET request

@@ -1,3 +1,4 @@
+// External depencies
 use axum::error_handling::HandleErrorLayer;
 use axum::BoxError;
 use axum::{
@@ -13,36 +14,42 @@ use std::sync::{mpsc::Sender, Arc, Mutex};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
+// Internal depencies
 use onlyati_datastore::{enums::DatabaseAction, enums::ValueType, utilities};
-
 use crate::rest::macros::return_ok;
 
+// Import macroes
 use super::macros::{
     return_client_error, return_ok_with_value, return_server_error, send_data_request,
 };
 
+/// Struct that is injected into every endpoint
 #[derive(Clone)]
 pub struct InjectedData {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
 }
 
+/// Struct is used to query the SET endpoint
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Pair {
     key: String,
     value: String,
 }
 
+/// Struct is used to query the GET and LIST endpoint
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct KeyParm {
     key: String,
 }
 
+/// Struct is used to query the REMKEY and REMPATH endpoints
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DeleteParm {
     key: String,
     kind: Option<String>,
 }
 
+/// GET endpoint
 async fn get_key(
     State(injected): State<InjectedData>,
     Query(parms): Query<KeyParm>,
@@ -64,6 +71,7 @@ async fn get_key(
     }
 }
 
+/// SET endpoint
 async fn set_key(
     State(injected): State<InjectedData>,
     Json(pair): Json<Pair>,
@@ -82,6 +90,7 @@ async fn set_key(
     }
 }
 
+/// REMKEY and REMPATH endpoint
 async fn delete_key(
     State(injected): State<InjectedData>,
     Query(parms): Query<DeleteParm>,
@@ -111,6 +120,7 @@ async fn delete_key(
     }
 }
 
+/// LIST endpoint
 async fn list_keys(
     State(injected): State<InjectedData>,
     Query(parms): Query<KeyParm>,
@@ -130,6 +140,7 @@ async fn list_keys(
     }
 }
 
+/// Start the REST server
 pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) {
     println!("REST interface on {} is starting...", address);
 

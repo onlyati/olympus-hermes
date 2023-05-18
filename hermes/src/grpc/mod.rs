@@ -1,10 +1,12 @@
+// External dependencies
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use std::thread::JoinHandle;
 
+// Internal dependencies
 use onlyati_datastore::enums::DatabaseAction;
-
 use crate::traits::ApplicationInterface;
 
+// gRPC interface that run the function
 pub struct Grpc {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,

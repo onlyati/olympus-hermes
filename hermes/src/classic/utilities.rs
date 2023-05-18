@@ -1,14 +1,16 @@
+// External dependencies
 use std::sync::{mpsc::Sender, Arc, Mutex};
-
 use bytes::BytesMut;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
+// Internal dependencies
 use onlyati_datastore::{
     enums::{DatabaseAction, ValueType},
     utilities,
 };
 
+// Import macros
 use super::macros::{
     return_client_error, return_ok, return_ok_with_value, return_server_error, send_data_request,
 };

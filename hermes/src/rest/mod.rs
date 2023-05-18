@@ -1,13 +1,15 @@
+// External depencies
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use std::thread::JoinHandle;
 
+// Internal depencies
 use onlyati_datastore::enums::DatabaseAction;
-
 use crate::traits::ApplicationInterface;
 
 mod utilities;
 mod macros;
 
+/// Struct that handles the REST interface
 pub struct Rest {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,
