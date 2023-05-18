@@ -1,5 +1,4 @@
 use axum::error_handling::HandleErrorLayer;
-use axum::extract::Path;
 use axum::BoxError;
 use axum::{
     extract::{Query, State},

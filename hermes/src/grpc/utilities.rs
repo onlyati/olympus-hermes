@@ -1,11 +1,9 @@
 use std::sync::{mpsc::Sender, Arc, Mutex};
 
 use tonic::{transport::Server, Request, Response, Status};
-use tower_http::cors::Any;
 
 use hermes::hermes_server::{Hermes, HermesServer};
 use hermes::{Empty, Key, KeyList, Pair};
-use tower_http::cors::CorsLayer;
 
 use onlyati_datastore::{enums::DatabaseAction, enums::ValueType, utilities};
 
@@ -131,16 +129,9 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
     hermes_grpc.data_sender = Some(data_sender);
     let hermes_service = HermesServer::new(hermes_grpc);
 
-    let cors_layer = CorsLayer::new()
-        .allow_methods(Any)
-        .allow_headers(Any)
-        .allow_origin(Any)
-        .expose_headers(Any);
-
     println!("gRPC interface on {} is starting...", address);
     Server::builder()
         .accept_http1(true)
-        .layer(cors_layer)
         .layer(tonic_web::GrpcWebLayer::new())
         .add_service(hermes_service)
         .serve(address.parse().unwrap())
