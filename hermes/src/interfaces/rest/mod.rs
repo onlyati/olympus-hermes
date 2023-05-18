@@ -1,22 +1,22 @@
-// External dependencies
+// External depencies
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use std::thread::JoinHandle;
 
-// Internal dependencies
+// Internal depencies
 use onlyati_datastore::enums::DatabaseAction;
-use crate::traits::ApplicationInterface;
+use super::ApplicationInterface;
 
-// gRPC interface that run the function
-pub struct Grpc {
+mod utilities;
+mod macros;
+
+/// Struct that handles the REST interface
+pub struct Rest {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,
     thread: Option<JoinHandle<()>>,
 }
 
-mod macros;
-mod utilities;
-
-impl Grpc {
+impl Rest {
     /// Create new interface
     pub fn new(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) -> Self {
         return Self {
@@ -27,8 +27,7 @@ impl Grpc {
     }
 }
 
-impl ApplicationInterface for Grpc {
-    /// Function to start the interface
+impl ApplicationInterface for Rest {
     fn run(&mut self) {
         let data_sender = self.data_sender.clone();
         let addres = self.address.clone();
@@ -45,7 +44,6 @@ impl ApplicationInterface for Grpc {
         self.thread = Some(thread);
     }
 
-    /// Check function that interface is running
     fn is_it_run(&self) -> Option<bool> {
         match &self.thread {
             Some(thread) => Some(!thread.is_finished()),

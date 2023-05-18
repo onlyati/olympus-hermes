@@ -11,7 +11,7 @@ macro_rules! send_data_request {
         }
     };
 }
-pub(super) use send_data_request;
+pub(in crate::interfaces::grpc) use send_data_request;
 
 macro_rules! return_server_error {
     ($error:expr) => {{
@@ -19,21 +19,21 @@ macro_rules! return_server_error {
         return Err(Status::internal("Internal server error"));
     }};
 }
-pub(super) use return_server_error;
+pub(in crate::interfaces::grpc) use return_server_error;
 
 macro_rules! return_client_error {
     ($error:expr) => {{
         return Err(Status::invalid_argument($error));
     }};
 }
-pub(super) use return_client_error;
+pub(in crate::interfaces::grpc) use return_client_error;
 
 macro_rules! return_ok_with_value {
     ($value:expr) => {{
         return Ok(Response::new($value));
     }};
 }
-pub(super) use return_ok_with_value;
+pub(in crate::interfaces::grpc) use return_ok_with_value;
 
 macro_rules! check_self_sender {
     ($self_sender:expr) => {
@@ -43,4 +43,4 @@ macro_rules! check_self_sender {
         }
     };
 }
-pub(super) use check_self_sender;
+pub(in crate::interfaces::grpc) use check_self_sender;

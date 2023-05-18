@@ -16,11 +16,10 @@ use tower_http::trace::TraceLayer;
 
 // Internal depencies
 use onlyati_datastore::{enums::DatabaseAction, enums::ValueType, utilities};
-use crate::rest::macros::return_ok;
 
 // Import macroes
 use super::macros::{
-    return_client_error, return_ok_with_value, return_server_error, send_data_request,
+    return_client_error, return_ok, return_ok_with_value, return_server_error, send_data_request,
 };
 
 /// Struct that is injected into every endpoint
@@ -133,7 +132,10 @@ async fn list_keys(
 
     match rx.recv() {
         Ok(response) => match response {
-            Ok(list) => return_ok_with_value!(list.iter().map(|x| x.get_key().clone()).collect::<Vec<String>>()),
+            Ok(list) => return_ok_with_value!(list
+                .iter()
+                .map(|x| x.get_key().clone())
+                .collect::<Vec<String>>()),
             Err(e) => return_client_error!(e.to_string()),
         },
         Err(e) => return_server_error!(e),

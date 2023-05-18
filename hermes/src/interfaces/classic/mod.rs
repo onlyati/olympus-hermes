@@ -1,22 +1,28 @@
-// External depencies
+// External dependencies
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use std::thread::JoinHandle;
 
-// Internal depencies
+// Internal dependecies
 use onlyati_datastore::enums::DatabaseAction;
-use crate::traits::ApplicationInterface;
+use super::ApplicationInterface;
 
-mod utilities;
 mod macros;
+mod utilities;
 
-/// Struct that handles the REST interface
-pub struct Rest {
+/// Classic interface that run functions
+/// Functions:
+/// - SET `key` `value`
+/// - GET `key`
+/// - REMKEY `key`
+/// - REMPATH `key`
+/// - LIST `key`
+pub struct Classic {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,
     thread: Option<JoinHandle<()>>,
 }
 
-impl Rest {
+impl Classic {
     /// Create new interface
     pub fn new(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) -> Self {
         return Self {
@@ -27,7 +33,8 @@ impl Rest {
     }
 }
 
-impl ApplicationInterface for Rest {
+impl ApplicationInterface for Classic {
+    /// Function to start the interface
     fn run(&mut self) {
         let data_sender = self.data_sender.clone();
         let addres = self.address.clone();
@@ -44,6 +51,7 @@ impl ApplicationInterface for Rest {
         self.thread = Some(thread);
     }
 
+    /// Check function that interface is running
     fn is_it_run(&self) -> Option<bool> {
         match &self.thread {
             Some(thread) => Some(!thread.is_finished()),

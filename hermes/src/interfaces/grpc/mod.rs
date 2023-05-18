@@ -2,27 +2,21 @@
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use std::thread::JoinHandle;
 
-// Internal dependecies
+// Internal dependencies
 use onlyati_datastore::enums::DatabaseAction;
-use crate::traits::ApplicationInterface;
+use super::ApplicationInterface;
 
 mod macros;
 mod utilities;
 
-/// Classic interface that run functions
-/// Functions:
-/// - SET `key` `value`
-/// - GET `key`
-/// - REMKEY `key`
-/// - REMPATH `key`
-/// - LIST `key`
-pub struct Classic {
+// gRPC interface that run the function
+pub struct Grpc {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,
     thread: Option<JoinHandle<()>>,
 }
 
-impl Classic {
+impl Grpc {
     /// Create new interface
     pub fn new(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) -> Self {
         return Self {
@@ -33,7 +27,7 @@ impl Classic {
     }
 }
 
-impl ApplicationInterface for Classic {
+impl ApplicationInterface for Grpc {
     /// Function to start the interface
     fn run(&mut self) {
         let data_sender = self.data_sender.clone();

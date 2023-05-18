@@ -1,8 +1,10 @@
-use crate::traits::ApplicationInterface;
-
 pub struct InterfaceHandler<T> {
     interfaces: Vec<(String, T)>,
 }
+
+pub mod classic;
+pub mod grpc;
+pub mod rest;
 
 impl<T: ApplicationInterface> InterfaceHandler<T> {
     pub fn new() -> Self {
@@ -39,5 +41,20 @@ impl<T: ApplicationInterface> InterfaceHandler<T> {
             }
             tokio::time::sleep(tokio::time::Duration::new(5, 0)).await;
         }
+    }
+}
+
+pub trait ApplicationInterface {
+    fn run(&mut self);
+    fn is_it_run(&self) -> Option<bool>;
+}
+
+impl ApplicationInterface for Box<dyn ApplicationInterface> {
+    fn run(&mut self) {
+        return self.as_mut().run();
+    }
+
+    fn is_it_run(&self) -> Option<bool> {
+        return self.as_ref().is_it_run();
     }
 }

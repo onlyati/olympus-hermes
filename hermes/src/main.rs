@@ -1,17 +1,13 @@
 use std::process::exit;
 use std::sync::{Arc, Mutex};
 
-mod classic;
-mod grpc;
-mod rest;
-mod interface_handler;
-mod traits;
+mod interfaces;
 
-use classic::Classic;
-use grpc::Grpc;
-use interface_handler::InterfaceHandler;
-use rest::Rest;
-use traits::ApplicationInterface;
+use interfaces::classic::Classic;
+use interfaces::grpc::Grpc;
+use interfaces::InterfaceHandler;
+use interfaces::rest::Rest;
+use interfaces::ApplicationInterface;
 
 fn main() {
     let rt = tokio::runtime::Builder::new_current_thread()
