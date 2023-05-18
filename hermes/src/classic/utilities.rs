@@ -13,61 +13,6 @@ use super::macros::{
     return_client_error, return_ok, return_ok_with_value, return_server_error, send_data_request,
 };
 
-/// Run Classic interface
-pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) {
-    println!("Classic interface on {} is starting...", address);
-
-    // Try to bind for address
-    let listener = match TcpListener::bind(address.clone()).await {
-        Ok(listener) => listener,
-        Err(e) => panic!("Classic interface failed to bind: {e}"),
-    };
-
-    loop {
-        // Catch every connection
-        let mut socket = match listener.accept().await {
-            Ok(socket) => socket,
-            Err(e) => panic!("Failed to accept connection: {}", e),
-        };
-
-        // Spawn thread for them
-        let data_sender = data_sender.clone();
-        tokio::spawn(async move {
-            let mut request: Vec<u8> = Vec::with_capacity(8);
-
-            // Read the request
-            loop {
-                let mut buffer = BytesMut::with_capacity(8);
-                match socket.0.read_buf(&mut buffer).await {
-                    // socket closed
-                    Ok(n) if n == 0 => break,
-                    Ok(n) => {
-                        for byte in &buffer[0..n] {
-                            request.push(*byte);
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("failed to read from socket; err = {:?}", e);
-                        return;
-                    }
-                };
-            }
-
-            // Handle it
-            let response = match parse_request(request, data_sender) {
-                Ok(vector) => String::from_utf8(vector).unwrap(),
-                Err(e) => e,
-            };
-
-            // And send the response back
-            if let Err(e) = socket.0.write_all(response.as_bytes()).await {
-                eprintln!("failed to write to socket; err = {:?}", e);
-                return;
-            }
-        });
-    }
-}
-
 /// Read parameters from request then execute them
 pub fn parse_request(
     request: Vec<u8>,
@@ -216,4 +161,59 @@ fn handle_command(
     }
 
     return_client_error!("Invalid command");
+}
+
+/// Run Classic interface
+pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) {
+    println!("Classic interface on {} is starting...", address);
+
+    // Try to bind for address
+    let listener = match TcpListener::bind(address.clone()).await {
+        Ok(listener) => listener,
+        Err(e) => panic!("Classic interface failed to bind: {e}"),
+    };
+
+    loop {
+        // Catch every connection
+        let mut socket = match listener.accept().await {
+            Ok(socket) => socket,
+            Err(e) => panic!("Failed to accept connection: {}", e),
+        };
+
+        // Spawn thread for them
+        let data_sender = data_sender.clone();
+        tokio::spawn(async move {
+            let mut request: Vec<u8> = Vec::with_capacity(8);
+
+            // Read the request
+            loop {
+                let mut buffer = BytesMut::with_capacity(8);
+                match socket.0.read_buf(&mut buffer).await {
+                    // socket closed
+                    Ok(n) if n == 0 => break,
+                    Ok(n) => {
+                        for byte in &buffer[0..n] {
+                            request.push(*byte);
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("failed to read from socket; err = {:?}", e);
+                        return;
+                    }
+                };
+            }
+
+            // Handle it
+            let response = match parse_request(request, data_sender) {
+                Ok(vector) => String::from_utf8(vector).unwrap(),
+                Err(e) => e,
+            };
+
+            // And send the response back
+            if let Err(e) = socket.0.write_all(response.as_bytes()).await {
+                eprintln!("failed to write to socket; err = {:?}", e);
+                return;
+            }
+        });
+    }
 }

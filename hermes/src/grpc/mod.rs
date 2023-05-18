@@ -11,8 +11,8 @@ pub struct Grpc {
     thread: Option<JoinHandle<()>>,
 }
 
-mod utilities;
 mod macros;
+mod utilities;
 
 impl Grpc {
     /// Create new interface

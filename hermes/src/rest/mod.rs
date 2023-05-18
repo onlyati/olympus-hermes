@@ -6,6 +6,7 @@ use onlyati_datastore::enums::DatabaseAction;
 use crate::traits::ApplicationInterface;
 
 mod utilities;
+mod macros;
 
 pub struct Rest {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
