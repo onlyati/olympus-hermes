@@ -76,6 +76,7 @@ async fn main_async() {
     handler.watch().await; // Block the thread, panic if service failed
 }
 
+
 /// Parse the input file and upload onto database before anything would happen
 fn parse_input_data(
     setting_name: &str,
