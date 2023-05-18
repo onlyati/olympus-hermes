@@ -1,5 +1,7 @@
 {
     "rust-analyzer.linkedProjects": [
-        "./cli/Cargo.toml"
+        "./cli/Cargo.toml",
+        "./hermes/Cargo.toml",
+        "./hermes/Cargo.toml"
     ]
 }
