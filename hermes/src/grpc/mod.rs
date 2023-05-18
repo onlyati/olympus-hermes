@@ -3,26 +3,18 @@ use std::thread::JoinHandle;
 
 use onlyati_datastore::enums::DatabaseAction;
 
-
 use crate::traits::ApplicationInterface;
 
-mod macros;
-mod utilities;
-
-/// Classic interface that run functions
-/// Functions:
-/// - SET `key` `value`
-/// - GET `key`
-/// - REMKEY `key`
-/// - REMPATH `key`
-/// - LIST `key`
-pub struct Classic {
+pub struct Grpc {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,
     thread: Option<JoinHandle<()>>,
 }
 
-impl Classic {
+mod utilities;
+mod macros;
+
+impl Grpc {
     /// Create new interface
     pub fn new(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) -> Self {
         return Self {
@@ -33,7 +25,7 @@ impl Classic {
     }
 }
 
-impl ApplicationInterface for Classic {
+impl ApplicationInterface for Grpc {
     /// Function to start the interface
     fn run(&mut self) {
         let data_sender = self.data_sender.clone();

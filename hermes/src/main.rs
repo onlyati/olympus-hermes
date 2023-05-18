@@ -2,10 +2,12 @@ use std::process::exit;
 use std::sync::{Arc, Mutex};
 
 mod classic;
+mod grpc;
 mod interface_handler;
 mod traits;
 
 use classic::Classic;
+use grpc::Grpc;
 use interface_handler::InterfaceHandler;
 use traits::ApplicationInterface;
 
@@ -60,6 +62,12 @@ async fn main_async() {
     //
     // Register gRPC interface service
     //
+    if let Some(addr) = config.get("host.grpc.address") {
+        handler.register_interface(
+            Box::new(Grpc::new(sender.clone(), addr.clone())),
+            "grpc".to_string(),
+        )
+    }
 
     //
     // Register REST interface service
