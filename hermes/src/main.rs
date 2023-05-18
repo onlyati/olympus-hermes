@@ -3,12 +3,14 @@ use std::sync::{Arc, Mutex};
 
 mod classic;
 mod grpc;
+mod rest;
 mod interface_handler;
 mod traits;
 
 use classic::Classic;
 use grpc::Grpc;
 use interface_handler::InterfaceHandler;
+use rest::Rest;
 use traits::ApplicationInterface;
 
 fn main() {
@@ -55,7 +57,7 @@ async fn main_async() {
     if let Some(addr) = config.get("host.classic.address") {
         handler.register_interface(
             Box::new(Classic::new(sender.clone(), addr.clone())),
-            "classic".to_string(),
+            "Classic".to_string(),
         )
     }
 
@@ -65,13 +67,19 @@ async fn main_async() {
     if let Some(addr) = config.get("host.grpc.address") {
         handler.register_interface(
             Box::new(Grpc::new(sender.clone(), addr.clone())),
-            "grpc".to_string(),
+            "gRPC".to_string(),
         )
     }
 
     //
     // Register REST interface service
     //
+    if let Some(addr) = config.get("host.rest.address") {
+        handler.register_interface(
+            Box::new(Rest::new(sender.clone(), addr.clone())),
+            "REST".to_string(),
+        )
+    }
 
     //
     // Start interfaces and watch them
