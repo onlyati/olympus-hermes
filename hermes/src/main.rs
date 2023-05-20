@@ -15,7 +15,7 @@ use interfaces::ApplicationInterface;
 use interfaces::InterfaceHandler;
 
 fn main() {
-    pretty_env_logger::init();
+    pretty_env_logger::init_timed();
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
