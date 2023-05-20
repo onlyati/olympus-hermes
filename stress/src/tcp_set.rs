@@ -10,20 +10,16 @@ async fn main() {
             let mut times: Vec<u128> = Vec::with_capacity(500_000 * std::mem::size_of::<u128>());
             let whole_now = std::time::Instant::now();
 
-            let null_byte: [u8; 0] = [];
-            println!("Lenght: {}", null_byte.len());
 
             for i in 0..500_000 {
                 let cmd = format!("SET /root/a{} a{}", i, i);
                 let now = std::time::Instant::now();
 
-                {
-                    let mut stream = tokio::net::TcpStream::connect("127.0.0.1:3030").await.unwrap();
-                    stream.write(cmd.as_bytes()).await.unwrap();
-                    // stream.write(&null_byte).await.unwrap();
-                }
-                // let mut result = String::new();
-                // stream.read_to_string(&mut result).await.unwrap();
+                let mut stream = tokio::net::TcpStream::connect("127.0.0.1:3030").await.unwrap();
+                stream.write(cmd.as_bytes()).await.unwrap();
+                stream.shutdown().await.unwrap();
+                let mut result = String::new();
+                stream.read_to_string(&mut result).await.unwrap();
 
                 // println!("{:?}", result);
     
