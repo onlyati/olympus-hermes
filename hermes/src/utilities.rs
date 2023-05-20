@@ -83,11 +83,11 @@ pub fn parse_input_hook(setting_name: &str, config: &HashMap<String, String>, da
             Ok(response) => match response {
                 Err(e) => return Err(format!("Error: {}", e)),
                 Ok(list) => {
-                    println!("Datastore: Defined hooks at startup: ");
+                    log::info!("Datastore: Defined hooks at startup: ");
                     for (prefix, links) in list {
-                        println!("Datastore: - {}", prefix);
+                        log::info!("Datastore: - {}", prefix);
                         for link in links {
-                            println!("Datastore:   - {}", link);
+                            log::info!("Datastore:   - {}", link);
                         }
                     }
                 },

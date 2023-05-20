@@ -6,7 +6,7 @@ macro_rules! send_data_request {
         };
 
         if let Err(e) = req_status {
-            eprintln!("Error: {}", e);
+            log::error!("Error: {}", e);
             return ">Err\n".as_bytes().to_vec();
         }
     };
@@ -15,7 +15,7 @@ pub (in crate::interfaces::classic) use send_data_request;
 
 macro_rules! return_server_error {
     ($error:expr) => {{
-        eprintln!("Error: {}", $error);
+        log::error!("Error: {}", $error);
         return ">Err".as_bytes().to_vec();
     }};
 }

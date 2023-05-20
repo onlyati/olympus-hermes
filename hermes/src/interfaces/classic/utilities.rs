@@ -167,7 +167,7 @@ fn handle_command(
 
 /// Run Classic interface
 pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) {
-    println!("Classic interface on {} is starting...", address);
+    log::info!("Classic interface on {} is starting...", address);
 
     // Try to bind for address
     let listener = match TcpListener::bind(address.clone()).await {
@@ -199,7 +199,7 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
                         }
                     }
                     Err(e) => {
-                        eprintln!("failed to read from socket; err = {:?}", e);
+                        log::warn!("failed to read from socket; err = {:?}", e);
                         return;
                     }
                 };
@@ -213,7 +213,7 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
 
             // And send the response back
             if let Err(e) = socket.0.write_all(response.as_bytes()).await {
-                eprintln!("failed to write to socket; err = {:?}", e);
+                log::warn!("failed to write to socket; err = {:?}", e);
                 return;
             }
         });

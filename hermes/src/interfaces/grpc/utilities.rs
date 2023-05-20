@@ -133,7 +133,7 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
     hermes_grpc.data_sender = Some(data_sender);
     let hermes_service = HermesServer::new(hermes_grpc);
 
-    println!("gRPC interface on {} is starting...", address);
+    log::info!("gRPC interface on {} is starting...", address);
     Server::builder()
         .accept_http1(true)
         .add_service(hermes_service)
