@@ -21,7 +21,6 @@ impl<T: ApplicationInterface> InterfaceHandler<T> {
 
     /// Function to register interfaces that applied ApplicationInterface trait
     pub fn register_interface(&mut self, interface: T, name: String) {
-        println!("InterfaceHandler: '{}' is registered!", name);
         self.interfaces.push((name, interface));
     }
 
@@ -31,7 +30,10 @@ impl<T: ApplicationInterface> InterfaceHandler<T> {
             panic!("InterfaceHandler: No interface is registered!");
         }
 
+        println!("InterfaceHandler: Defined interfaces");
+
         for interface in &mut self.interfaces {
+            println!("InterfaceHandler: - {}", interface.0);
             interface.1.run();
         }
     }
@@ -39,8 +41,8 @@ impl<T: ApplicationInterface> InterfaceHandler<T> {
     /// Monitor them by an interval, if any interface failes then program has  apanic reaction
     pub async fn watch(&self) {
         let mut first_run = true;
+        tokio::time::sleep(tokio::time::Duration::new(1, 0)).await;
         loop {
-            tokio::time::sleep(tokio::time::Duration::new(5, 0)).await;
             for interface in &self.interfaces {
                 match interface.1.is_it_run() {
                     Some(is_it_run) => {
@@ -55,6 +57,7 @@ impl<T: ApplicationInterface> InterfaceHandler<T> {
                 }
             }
             first_run = false;
+            tokio::time::sleep(tokio::time::Duration::new(5, 0)).await;
         }
     }
 }

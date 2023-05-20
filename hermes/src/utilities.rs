@@ -71,6 +71,29 @@ pub fn parse_input_hook(setting_name: &str, config: &HashMap<String, String>, da
                 Err(e) => return Err(format!("Error: {}", e)),
             }
         }
+
+        // List defined hooks
+        let (tx, rx) = utilities::get_channel_for_hook_list();
+        let action = DatabaseAction::HookList(tx, "/root".to_string());
+        if let Err(e) = data_sender.send(action) {
+            return Err(format!("Error: {}", e));
+        }
+
+        match rx.recv() {
+            Ok(response) => match response {
+                Err(e) => return Err(format!("Error: {}", e)),
+                Ok(list) => {
+                    println!("Datastore: Defined hooks at startup: ");
+                    for (prefix, links) in list {
+                        println!("Datastore: - {}", prefix);
+                        for link in links {
+                            println!("Datastore:   - {}", link);
+                        }
+                    }
+                },
+            },
+            Err(e) => return Err(format!("Error: {}", e)),
+        }
     }
 
     return Ok(());
