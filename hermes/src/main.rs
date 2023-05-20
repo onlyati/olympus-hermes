@@ -5,7 +5,6 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 mod interfaces;
-mod hooks;
 
 use interfaces::classic::Classic;
 use interfaces::grpc::Grpc;
@@ -44,9 +43,6 @@ async fn main_async() {
     let sender = onlyati_datastore::utilities::start_datastore("root".to_string());
     parse_input_data("init.data", &config, &sender).unwrap_or_else(|x| panic!("{}", x));
     let sender = Arc::new(Mutex::new(sender));
-
-    // Start HookManager
-    let hook_manager_sender = hooks::start_manager();
 
     // Create interface handler
     let mut handler: InterfaceHandler<Box<dyn ApplicationInterface>> = InterfaceHandler::new();
