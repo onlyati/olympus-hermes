@@ -6,7 +6,7 @@ macro_rules! send_data_request {
         };
 
         if let Err(e) = req_status {
-            log::error!("Error: {}", e);
+            tracing::error!("Error: {}", e);
             return Err(Status::internal("Internal server error"));
         }
     };
@@ -15,7 +15,7 @@ pub(in crate::interfaces::grpc) use send_data_request;
 
 macro_rules! return_server_error {
     ($error:expr) => {{
-        log::error!("Error: {}", $error);
+        tracing::error!("Error: {}", $error);
         return Err(Status::internal("Internal server error"));
     }};
 }

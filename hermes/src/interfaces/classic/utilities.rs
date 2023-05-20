@@ -23,7 +23,7 @@ pub fn parse_request(
     let valid_commands = vec!["SET", "GET", "REMKEY", "REMPATH", "LIST"];
     let request = match String::from_utf8(request) {
         Ok(req) => req,
-        Err(e) => return Err(format!("Failed to read request: {}", e)),
+        Err(e) => return Err(format!("failed to read request: {}", e)),
     };
 
     let mut command = String::new();
@@ -37,6 +37,7 @@ pub fn parse_request(
             if byte == ' ' {
                 if !valid_commands.contains(&command.as_str()) {
                     // If not valid command then don't check further
+                    tracing::debug!("invalid command specified: {}", command);
                     return Err(">Err\nInvalid command\n".to_string());
                 }
                 copy += 1;
@@ -56,6 +57,8 @@ pub fn parse_request(
         }
     }
 
+    tracing::debug!("traced paramerets: Command: {}, Key: {}, Value: {}", command, key, value);
+
     // Execute what the request asked then return with a reponse
     return Ok(handle_command(command, key, value, data_sender));
 }
@@ -69,6 +72,7 @@ fn handle_command(
 ) -> Vec<u8> {
     // Key is required for all request
     if key.is_empty() {
+        tracing::trace!("key is missing");
         return_client_error!("Key is missing");
     }
 
@@ -76,6 +80,7 @@ fn handle_command(
         "SET" => {
             // SET without value is an error
             if value.is_empty() {
+                tracing::debug!("no value specified for SET action");
                 return_client_error!("Value is missing")
             }
 
@@ -167,19 +172,19 @@ fn handle_command(
 
 /// Run Classic interface
 pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) {
-    log::info!("Classic interface on {} is starting...", address);
+    tracing::info!("classic interface on {} is starting...", address);
 
     // Try to bind for address
     let listener = match TcpListener::bind(address.clone()).await {
         Ok(listener) => listener,
-        Err(e) => panic!("Classic interface failed to bind: {e}"),
+        Err(e) => panic!("classic interface failed to bind: {e}"),
     };
 
     loop {
         // Catch every connection
         let mut socket = match listener.accept().await {
             Ok(socket) => socket,
-            Err(e) => panic!("Failed to accept connection: {}", e),
+            Err(e) => panic!("failed to accept connection: {}", e),
         };
 
         // Spawn thread for them
@@ -188,6 +193,7 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
             let mut request: Vec<u8> = Vec::with_capacity(8);
 
             // Read the request
+            tracing::trace!("reading request");
             loop {
                 let mut buffer = BytesMut::with_capacity(8);
                 match socket.0.read_buf(&mut buffer).await {
@@ -199,11 +205,12 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
                         }
                     }
                     Err(e) => {
-                        log::warn!("failed to read from socket; err = {:?}", e);
+                        tracing::warn!("failed to read from socket; err = {:?}", e);
                         return;
                     }
                 };
             }
+            tracing::trace!("has been read {} bytes", request.len());
 
             // Handle it
             let response = match parse_request(request, data_sender) {
@@ -211,11 +218,14 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
                 Err(e) => e,
             };
 
+            tracing::trace!("write length: {}", response.len());
+
             // And send the response back
             if let Err(e) = socket.0.write_all(response.as_bytes()).await {
-                log::warn!("failed to write to socket; err = {:?}", e);
+                tracing::warn!("failed to write to socket; err = {:?}", e);
                 return;
             }
+            tracing::trace!("close connection");
         });
     }
 }

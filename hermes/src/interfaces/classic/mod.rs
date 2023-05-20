@@ -39,11 +39,13 @@ impl ApplicationInterface for Classic {
         let data_sender = self.data_sender.clone();
         let addres = self.address.clone();
         let thread = std::thread::spawn(move || {
+            tracing::trace!("allocate new multi threaded runtime to classic interface");
             let rt = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .unwrap();
             rt.block_on(async move {
+                tracing::trace!("Start classic interface");
                 utilities::run_async(data_sender, addres).await;
             });
         });

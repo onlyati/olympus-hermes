@@ -1,11 +1,15 @@
 // External depencies
+use axum::error_handling::HandleErrorLayer;
+use reqwest::StatusCode;
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use tonic::{transport::Server, Request, Response, Status};
+use tower::{BoxError, ServiceBuilder};
+use tower_http::trace::TraceLayer;
 
 // Internal depencies
 use hermes::hermes_server::{Hermes, HermesServer};
 use hermes::{Empty, Key, KeyList, Pair};
-use onlyati_datastore::datastore::{enums::DatabaseAction, enums::pair::ValueType, utilities};
+use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction, utilities};
 
 // Import macros
 use super::macros::{
@@ -111,8 +115,11 @@ impl Hermes for HermesGrpc {
         let data_sender = check_self_sender!(&self.data_sender);
 
         let (tx, rx) = utilities::get_channel_for_list();
-        let list_action =
-            DatabaseAction::ListKeys(tx, request.key, onlyati_datastore::datastore::enums::ListType::All);
+        let list_action = DatabaseAction::ListKeys(
+            tx,
+            request.key,
+            onlyati_datastore::datastore::enums::ListType::All,
+        );
         send_data_request!(list_action, data_sender);
 
         match rx.recv() {
@@ -133,9 +140,25 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
     hermes_grpc.data_sender = Some(data_sender);
     let hermes_service = HermesServer::new(hermes_grpc);
 
-    log::info!("gRPC interface on {} is starting...", address);
+    tracing::info!("gRPC interface on {} is starting...", address);
     Server::builder()
         .accept_http1(true)
+        .layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(|error: BoxError| async move {
+                    if error.is::<tower::timeout::error::Elapsed>() {
+                        Ok(StatusCode::REQUEST_TIMEOUT)
+                    } else {
+                        Err((
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            tracing::error!("Unhandled internal error: {}", error),
+                        ))
+                    }
+                }))
+                .timeout(std::time::Duration::from_secs(10))
+                .layer(TraceLayer::new_for_http())
+                .into_inner(),
+        )
         .add_service(hermes_service)
         .serve(address.parse().unwrap())
         .await

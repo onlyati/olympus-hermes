@@ -144,7 +144,7 @@ async fn list_keys(
 
 /// Start the REST server
 pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) {
-    log::info!("REST interface on {} is starting...", address);
+    tracing::info!("REST interface on {} is starting...", address);
 
     let app = Router::new()
         .route("/db", post(set_key))

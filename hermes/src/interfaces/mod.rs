@@ -27,14 +27,14 @@ impl<T: ApplicationInterface> InterfaceHandler<T> {
     /// Start each registered interface
     pub fn start(&mut self) {
         if self.interfaces.len() == 0 {
-            log::error!("No interface is registered!");
+            tracing::error!("No interface is registered!");
             panic!("InterfaceHandler: No interface is registered!");
         }
 
-        log::info!("Defined interfaces");
+        tracing::info!("Defined interfaces");
 
         for interface in &mut self.interfaces {
-            log::info!("- {}", interface.0);
+            tracing::info!("- {}", interface.0);
             interface.1.run();
         }
     }
@@ -48,15 +48,15 @@ impl<T: ApplicationInterface> InterfaceHandler<T> {
                 match interface.1.is_it_run() {
                     Some(is_it_run) => {
                         if !is_it_run {
-                            log::error!("'{}' has stopped", interface.0);
+                            tracing::error!("'{}' has stopped", interface.0);
                             panic!("InterfaceHandler: '{}' has stopped", interface.0);
                         }
                         if first_run && is_it_run {
-                            log::info!("{}' is running!", interface.0);
+                            tracing::info!("{}' is running!", interface.0);
                         }
                     }
                     None => {
-                        log::error!("{}' has not been started", interface.0);
+                        tracing::error!("{}' has not been started", interface.0);
                         panic!("InterfaceHandler: '{}' has not been started", interface.0);
                     },
                 }

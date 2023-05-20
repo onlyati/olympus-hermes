@@ -1,8 +1,7 @@
 use std::process::exit;
 use std::sync::{Arc, Mutex};
 
-extern crate pretty_env_logger;
-extern crate log;
+use tracing_subscriber::{FmtSubscriber, EnvFilter};
 
 mod interfaces;
 mod utilities;
@@ -15,7 +14,13 @@ use interfaces::ApplicationInterface;
 use interfaces::InterfaceHandler;
 
 fn main() {
-    pretty_env_logger::init_timed();
+    // Read RUST_LOG environment variable and set trace accordingly, default is Level::ERROR
+    let subscriber = FmtSubscriber::builder()
+        .with_env_filter(EnvFilter::from_default_env())
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).expect("Failed to set loger");
+
+    // Build runtime
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -31,14 +36,14 @@ async fn main_async() {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 2 {
-        log::error!("Configuration file is missing");
+        tracing::error!("Configuration file is missing");
         exit(1);
     }
 
     let config = match onlyati_config::read_config(args[1].as_str()) {
         Ok(config) => config,
         Err(e) => {
-            log::error!("Config file error: {}", e);
+            tracing::error!("Config file error: {}", e);
             exit(1);
         },
     };

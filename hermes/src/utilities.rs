@@ -83,11 +83,11 @@ pub fn parse_input_hook(setting_name: &str, config: &HashMap<String, String>, da
             Ok(response) => match response {
                 Err(e) => return Err(format!("Error: {}", e)),
                 Ok(list) => {
-                    log::info!("Defined hooks at startup: ");
+                    tracing::info!("Defined hooks at startup: ");
                     for (prefix, links) in list {
-                        log::info!("- {}", prefix);
+                        tracing::info!("- {}", prefix);
                         for link in links {
-                            log::info!("  - {}", link);
+                            tracing::info!("  - {}", link);
                         }
                     }
                 },
