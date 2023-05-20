@@ -31,14 +31,14 @@ async fn main_async() {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 2 {
-        log::error!("Hermes: Configuration file is missing");
+        log::error!("Configuration file is missing");
         exit(1);
     }
 
     let config = match onlyati_config::read_config(args[1].as_str()) {
         Ok(config) => config,
         Err(e) => {
-            log::error!("Hermes: Config file error: {}", e);
+            log::error!("Config file error: {}", e);
             exit(1);
         },
     };
