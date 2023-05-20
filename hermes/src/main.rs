@@ -7,12 +7,13 @@ use std::sync::{Arc, Mutex};
 mod interfaces;
 
 use interfaces::classic::Classic;
+use interfaces::dummy::Dummy;
 use interfaces::grpc::Grpc;
 use interfaces::rest::Rest;
 use interfaces::ApplicationInterface;
 use interfaces::InterfaceHandler;
-use onlyati_datastore::enums::DatabaseAction;
-use onlyati_datastore::utilities;
+use onlyati_datastore::datastore::enums::DatabaseAction;
+use onlyati_datastore::datastore::utilities;
 
 fn main() {
     let rt = tokio::runtime::Builder::new_current_thread()
@@ -39,13 +40,26 @@ async fn main_async() {
         Err(e) => panic!("Config file error: {}", e),
     };
 
-    // Start datastore thread
-    let sender = onlyati_datastore::utilities::start_datastore("root".to_string());
+    // Initialize datastore-rs
+    let (sender, hook_thread) = onlyati_datastore::hook::utilities::start_hook_manager();
+    let (sender, db_thread) =
+        onlyati_datastore::datastore::utilities::start_datastore("root".to_string(), Some(sender));
     parse_input_data("init.data", &config, &sender).unwrap_or_else(|x| panic!("{}", x));
     let sender = Arc::new(Mutex::new(sender));
 
     // Create interface handler
     let mut handler: InterfaceHandler<Box<dyn ApplicationInterface>> = InterfaceHandler::new();
+
+    // Register the monitor only interfaces
+    handler.register_interface(
+        Box::new(Dummy::new(Some(hook_thread))),
+        "HookManager".to_string(),
+    );
+
+    handler.register_interface(
+        Box::new(Dummy::new(Some(db_thread))),
+        "Datastore".to_string(),
+    );
 
     // Register classic interface
     if let Some(addr) = config.get("host.classic.address") {
@@ -75,7 +89,6 @@ async fn main_async() {
     handler.start();
     handler.watch().await; // Block the thread, panic if service failed
 }
-
 
 /// Parse the input file and upload onto database before anything would happen
 fn parse_input_data(

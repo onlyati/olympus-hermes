@@ -15,7 +15,7 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
 // Internal depencies
-use onlyati_datastore::{enums::DatabaseAction, enums::ValueType, utilities};
+use onlyati_datastore::datastore::{enums::DatabaseAction, enums::pair::ValueType, utilities};
 
 // Import macroes
 use super::macros::{
@@ -126,7 +126,7 @@ async fn list_keys(
 ) -> impl IntoResponse {
     let (tx, rx) = utilities::get_channel_for_list();
     let list_action =
-        DatabaseAction::ListKeys(tx, parms.key, onlyati_datastore::enums::ListType::All);
+        DatabaseAction::ListKeys(tx, parms.key, onlyati_datastore::datastore::enums::ListType::All);
 
     send_data_request!(list_action, injected.data_sender);
 

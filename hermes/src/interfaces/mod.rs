@@ -1,6 +1,7 @@
 pub mod classic;
 pub mod grpc;
 pub mod rest;
+pub mod dummy;
 
 /// # Interface handler
 /// 
@@ -20,13 +21,14 @@ impl<T: ApplicationInterface> InterfaceHandler<T> {
 
     /// Function to register interfaces that applied ApplicationInterface trait
     pub fn register_interface(&mut self, interface: T, name: String) {
+        println!("InterfaceHandler: '{}' is registered!", name);
         self.interfaces.push((name, interface));
     }
 
     /// Start each registered interface
     pub fn start(&mut self) {
         if self.interfaces.len() == 0 {
-            panic!("No interface is registered!");
+            panic!("InterfaceHandler: No interface is registered!");
         }
 
         for interface in &mut self.interfaces {
@@ -36,18 +38,23 @@ impl<T: ApplicationInterface> InterfaceHandler<T> {
 
     /// Monitor them by an interval, if any interface failes then program has  apanic reaction
     pub async fn watch(&self) {
+        let mut first_run = true;
         loop {
+            tokio::time::sleep(tokio::time::Duration::new(5, 0)).await;
             for interface in &self.interfaces {
                 match interface.1.is_it_run() {
                     Some(is_it_run) => {
                         if !is_it_run {
-                            panic!("Interface '{}' has stopped", interface.0)
+                            panic!("InterfaceHandler: '{}' has stopped", interface.0);
+                        }
+                        if first_run && is_it_run {
+                            println!("InterfaceHandler: '{}' is running!", interface.0);
                         }
                     }
-                    None => panic!("Interface '{}' has not been started", interface.0),
+                    None => panic!("InterfaceHandler: '{}' has not been started", interface.0),
                 }
             }
-            tokio::time::sleep(tokio::time::Duration::new(5, 0)).await;
+            first_run = false;
         }
     }
 }

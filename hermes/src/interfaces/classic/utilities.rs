@@ -5,8 +5,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
 // Internal dependencies
-use onlyati_datastore::{
-    enums::{DatabaseAction, ValueType},
+use onlyati_datastore::datastore::{
+    enums::{DatabaseAction, pair::ValueType},
     utilities,
 };
 
@@ -113,7 +113,7 @@ fn handle_command(
             // Handle LIST request
             let (tx, rx) = utilities::get_channel_for_list();
             let list_action =
-                DatabaseAction::ListKeys(tx, key, onlyati_datastore::enums::ListType::All);
+                DatabaseAction::ListKeys(tx, key, onlyati_datastore::datastore::enums::ListType::All);
             send_data_request!(list_action, data_sender);
 
             match rx.recv() {

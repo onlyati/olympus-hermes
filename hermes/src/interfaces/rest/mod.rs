@@ -3,7 +3,7 @@ use std::sync::{mpsc::Sender, Arc, Mutex};
 use std::thread::JoinHandle;
 
 // Internal depencies
-use onlyati_datastore::enums::DatabaseAction;
+use onlyati_datastore::datastore::enums::DatabaseAction;
 use super::ApplicationInterface;
 
 mod utilities;

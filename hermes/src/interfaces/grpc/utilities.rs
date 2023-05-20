@@ -5,7 +5,7 @@ use tonic::{transport::Server, Request, Response, Status};
 // Internal depencies
 use hermes::hermes_server::{Hermes, HermesServer};
 use hermes::{Empty, Key, KeyList, Pair};
-use onlyati_datastore::{enums::DatabaseAction, enums::ValueType, utilities};
+use onlyati_datastore::datastore::{enums::DatabaseAction, enums::pair::ValueType, utilities};
 
 // Import macros
 use super::macros::{
@@ -112,7 +112,7 @@ impl Hermes for HermesGrpc {
 
         let (tx, rx) = utilities::get_channel_for_list();
         let list_action =
-            DatabaseAction::ListKeys(tx, request.key, onlyati_datastore::enums::ListType::All);
+            DatabaseAction::ListKeys(tx, request.key, onlyati_datastore::datastore::enums::ListType::All);
         send_data_request!(list_action, data_sender);
 
         match rx.recv() {
