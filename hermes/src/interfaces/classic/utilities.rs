@@ -190,16 +190,20 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
         // Spawn thread for them
         let data_sender = data_sender.clone();
         tokio::spawn(async move {
-            let mut request: Vec<u8> = Vec::with_capacity(8);
+            let mut request: Vec<u8> = Vec::with_capacity(4096);
 
             // Read the request
             tracing::trace!("reading request");
             loop {
-                let mut buffer = BytesMut::with_capacity(8);
+                let mut buffer = BytesMut::with_capacity(4096);
                 match socket.0.read_buf(&mut buffer).await {
                     // socket closed
-                    Ok(n) if n == 0 => break,
+                    Ok(n) if n == 0 => {
+                        tracing::trace!("has read EOF");
+                        break;
+                    },
                     Ok(n) => {
+                        tracing::trace!("has read {} bytes", n);
                         for byte in &buffer[0..n] {
                             request.push(*byte);
                         }
@@ -221,11 +225,12 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
             tracing::trace!("write length: {}", response.len());
 
             // And send the response back
-            if let Err(e) = socket.0.write_all(response.as_bytes()).await {
+            if let Err(e) = socket.0.write(response.as_bytes()).await {
                 tracing::warn!("failed to write to socket; err = {:?}", e);
                 return;
             }
             tracing::trace!("close connection");
+            let _ = socket.0.flush();
         });
     }
 }

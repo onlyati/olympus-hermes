@@ -1,5 +1,5 @@
 use hermes::hermes_client::{HermesClient};
-use hermes::{SetPair};
+use hermes::{Pair};
 
 mod hermes {
     tonic::include_proto!("hermes");
@@ -9,32 +9,16 @@ mod hermes {
 async fn main() {
     let mut joins: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
-    for j in 0..2 {
-        let table = {
-            if j % 4 == 0 {
-                "Report"
-            }
-            else if j % 4 == 1 {
-                "Error"
-            }
-            else if j % 4 == 2 {
-                "Batch"
-            }
-            else {
-                "Monitoring"
-            }
-        };
-
+    for j in 0..1 {
         let t1 = tokio::spawn(async move {
             let mut times: Vec<u128> = Vec::with_capacity(500_000 * std::mem::size_of::<u128>());
             let whole_now = std::time::Instant::now();
             let mut client = HermesClient::connect("http://127.0.0.1:3031").await.unwrap();
 
             for i in 0..500_000 {
-                let pair = SetPair {
-                    key: format!("key{}", i),
-                    value: format!("Hello ez itt a {}", i),
-                    table: table.to_string(),
+                let pair = Pair {
+                    key: format!("/root/a{}", i),
+                    value: format!("a{}", i),
                 };
                 let request = tonic::Request::new(pair);
 
@@ -62,7 +46,7 @@ async fn main() {
         
             let total = whole_now.elapsed();
     
-            println!("Full time: {:?}\nAverage time for thread #{} with {}: {} us", total, j, table, avg);
+            println!("Full time: {:?}\nAverage time for thread #{}: {} us", total, j, avg);
         });
         
         joins.push(t1);

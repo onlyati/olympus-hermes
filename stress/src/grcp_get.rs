@@ -9,21 +9,7 @@ mod hermes {
 async fn main() {
     let mut joins: Vec<tokio::task::JoinHandle<()>> = Vec::new();
 
-    for j in 0..2 {
-        let table = {
-            if j % 4 == 0 {
-                "Report"
-            }
-            else if j % 4 == 1 {
-                "Error"
-            }
-            else if j % 4 == 2 {
-                "Batch"
-            }
-            else {
-                "Monitoring"
-            }
-        };
+    for j in 0..1 {
 
         let t1 = tokio::spawn(async move {
             let mut times: Vec<u128> = Vec::with_capacity(500_000 * std::mem::size_of::<u128>());
@@ -32,8 +18,7 @@ async fn main() {
 
             for i in 0..500_000 {
                 let pair = Key {
-                    key: String::from("mem_limit"),
-                    table: String::from("Monitoring"),
+                    key: String::from("/root/a1"),
                 };
                 let request = tonic::Request::new(pair);
 
@@ -61,7 +46,7 @@ async fn main() {
         
             let total = whole_now.elapsed();
     
-            println!("Full time: {:?}\nAverage time for thread #{} with {}: {} us", total, j, table, avg);
+            println!("Full time: {:?}\nAverage time for thread #{}: {} us", total, j, avg);
         });
         
         joins.push(t1);
