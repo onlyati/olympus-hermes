@@ -134,7 +134,7 @@ async fn list_keys(
         Ok(response) => match response {
             Ok(list) => return_ok_with_value!(list
                 .iter()
-                .map(|x| x.get_key().clone())
+                .map(|x| x.get_key().to_string())
                 .collect::<Vec<String>>()),
             Err(e) => return_client_error!(e.to_string()),
         },

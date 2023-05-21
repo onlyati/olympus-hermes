@@ -125,7 +125,7 @@ impl Hermes for HermesGrpc {
         match rx.recv() {
             Ok(response) => match response {
                 Ok(value) => return_ok_with_value!(KeyList {
-                    keys: value.iter().map(|x| x.get_key().clone()).collect(),
+                    keys: value.iter().map(|x| x.get_key().to_string()).collect(),
                 }),
                 Err(e) => return_client_error!(e.to_string()),
             },

@@ -1,7 +1,8 @@
 use std::process::exit;
 use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
 
-use tracing_subscriber::{FmtSubscriber, EnvFilter};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 mod interfaces;
 mod utilities;
@@ -19,6 +20,8 @@ fn main() {
         .with_env_filter(EnvFilter::from_default_env())
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set loger");
+
+    tracing::info!("hermes is initializing");
 
     // Build runtime
     let rt = tokio::runtime::Builder::new_current_thread()
@@ -45,14 +48,31 @@ async fn main_async() {
         Err(e) => {
             tracing::error!("Config file error: {}", e);
             exit(1);
-        },
+        }
     };
 
     // Initialize datastore-rs
-    let (sender, hook_thread) = onlyati_datastore::hook::utilities::start_hook_manager();
-    let (sender, db_thread) =
-        onlyati_datastore::datastore::utilities::start_datastore("root".to_string(), Some(sender));
-        
+    let (hook_sender, hook_thread) = onlyati_datastore::hook::utilities::start_hook_manager();
+    let mut logger_thread: Option<JoinHandle<()>> = None;
+
+    let (sender, db_thread) = match config.get("logger.location") {
+        Some(path) => {
+            let (logger_sender, logger_inner_thread) =
+                onlyati_datastore::logger::utilities::start_logger(path);
+            logger_thread = Some(logger_inner_thread);
+            onlyati_datastore::datastore::utilities::start_datastore(
+                "root".to_string(),
+                Some(hook_sender),
+                Some(logger_sender),
+            )
+        }
+        None => onlyati_datastore::datastore::utilities::start_datastore(
+            "root".to_string(),
+            Some(hook_sender),
+            None,
+        ),
+    };
+
     // Parse the input data for database and hooks too
     utilities::parse_input_data("init.data", &config, &sender).unwrap_or_else(|x| panic!("{}", x));
     utilities::parse_input_hook("hook.data", &config, &sender).unwrap_or_else(|x| panic!("{}", x));
@@ -71,6 +91,13 @@ async fn main_async() {
         Box::new(Dummy::new(Some(db_thread))),
         "Datastore".to_string(),
     );
+
+    if let Some(logger_thread) = logger_thread {
+        handler.register_interface(
+            Box::new(Dummy::new(Some(logger_thread))),
+            "Logger".to_string(),
+        )
+    }
 
     // Register classic interface
     if let Some(addr) = config.get("host.classic.address") {
@@ -100,5 +127,3 @@ async fn main_async() {
     handler.start();
     handler.watch().await; // Block the thread, panic if service failed
 }
-
-
