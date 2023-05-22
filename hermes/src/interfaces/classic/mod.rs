@@ -18,6 +18,12 @@ mod utilities;
 /// - REMKEY `key`
 /// - REMPATH `key`
 /// - LIST `key`
+/// - GETHOOK `key`
+/// - SETHOOK `key` `link`
+/// - REMHOOK `key` `link`
+/// - LISTHOOK `key`
+/// - SUSPEND LOG
+/// - RESUME LOG
 pub struct Classic {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     hook_sender: Arc<Mutex<Sender<HookManagerAction>>>,

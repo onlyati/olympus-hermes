@@ -272,7 +272,7 @@ fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
-        "LISTHOOK" => {
+        "LISTHOOKS" => {
             // List hooks based on a prefix
             let prefix = key;
             let (tx, rx) = get_channel();
@@ -284,7 +284,7 @@ fn handle_command(
                     HookManagerResponse::HookList(hooks) => {
                         let mut response = String::new();
                         for (prefix, links) in hooks {
-                            response += format!("{} {:?}", prefix, links).as_str();
+                            response += format!("{} {:?}\n", prefix, links).as_str();
                         }
                         return_ok_with_value!(response);
                     }

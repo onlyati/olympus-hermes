@@ -132,8 +132,19 @@ async fn main_async() {
 
     // Register gRPC interface
     if let Some(addr) = config.get("host.grpc.address") {
+        let hook_sender = hook_sender.clone();
+        let logger_sender = match &logger_sender {
+            Some(logger) => Some(logger.clone()),
+            None => None,
+        };
+
         handler.register_interface(
-            Box::new(Grpc::new(sender.clone(), addr.clone())),
+            Box::new(Grpc::new(
+                sender.clone(),
+                addr.clone(),
+                hook_sender,
+                logger_sender,
+            )),
             "gRPC".to_string(),
         )
     }
