@@ -1,12 +1,16 @@
 // External dependencies
-use std::sync::{mpsc::Sender, Arc, Mutex};
 use bytes::BytesMut;
+use onlyati_datastore::hook::enums::{HookManagerAction, HookManagerResponse};
+use onlyati_datastore::hook::utilities::get_channel;
+use onlyati_datastore::logger::enums::{LoggerAction, LoggerResponse};
+use std::sync::mpsc::channel;
+use std::sync::{mpsc::Sender, Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
 // Internal dependencies
 use onlyati_datastore::datastore::{
-    enums::{DatabaseAction, pair::ValueType},
+    enums::{pair::ValueType, DatabaseAction},
     utilities,
 };
 
@@ -19,8 +23,22 @@ use super::macros::{
 pub fn parse_request(
     request: Vec<u8>,
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+    hook_sender: Arc<Mutex<Sender<HookManagerAction>>>,
+    logger_sender: Option<Arc<Mutex<Sender<LoggerAction>>>>,
 ) -> Result<Vec<u8>, String> {
-    let valid_commands = vec!["SET", "GET", "REMKEY", "REMPATH", "LIST"];
+    let valid_commands = vec![
+        "SET",
+        "GET",
+        "REMKEY",
+        "REMPATH",
+        "LIST",
+        "GETHOOK",
+        "SETHOOK",
+        "REMHOOK",
+        "LISTHOOKS",
+        "SUSPEND",
+        "RESUME",
+    ];
     let request = match String::from_utf8(request) {
         Ok(req) => req,
         Err(e) => return Err(format!("failed to read request: {}", e)),
@@ -57,10 +75,22 @@ pub fn parse_request(
         }
     }
 
-    tracing::debug!("traced paramerets: Command: {}, Key: {}, Value: {}", command, key, value);
+    tracing::debug!(
+        "traced paramerets: Command: {}, Key: {}, Value: {}",
+        command,
+        key,
+        value
+    );
 
     // Execute what the request asked then return with a reponse
-    return Ok(handle_command(command, key, value, data_sender));
+    return Ok(handle_command(
+        command,
+        key,
+        value,
+        data_sender,
+        hook_sender,
+        logger_sender,
+    ));
 }
 
 /// Requst has been parsed and this function executes what it had to
@@ -69,6 +99,8 @@ fn handle_command(
     key: String,
     value: String,
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+    hook_sender: Arc<Mutex<Sender<HookManagerAction>>>,
+    logger_sender: Option<Arc<Mutex<Sender<LoggerAction>>>>,
 ) -> Vec<u8> {
     // Key is required for all request
     if key.is_empty() {
@@ -117,8 +149,11 @@ fn handle_command(
         "LIST" => {
             // Handle LIST request
             let (tx, rx) = utilities::get_channel_for_list();
-            let list_action =
-                DatabaseAction::ListKeys(tx, key, onlyati_datastore::datastore::enums::ListType::All);
+            let list_action = DatabaseAction::ListKeys(
+                tx,
+                key,
+                onlyati_datastore::datastore::enums::ListType::All,
+            );
             send_data_request!(list_action, data_sender);
 
             match rx.recv() {
@@ -164,6 +199,147 @@ fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        "SETHOOK" => {
+            // Add new hook
+            if value.is_empty() {
+                tracing::debug!("no link specified for SETHOOK action");
+                return_client_error!("Link is missing")
+            }
+            let prefix = key;
+            let link = value;
+
+            let (tx, rx) = get_channel();
+            let action = HookManagerAction::Set(tx, prefix, link);
+            send_data_request!(action, hook_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    HookManagerResponse::Ok => return_ok!(),
+                    HookManagerResponse::Error(e) => return_client_error!(e),
+                    _ => return_server_error!(
+                        "Well, it should not happen, response for HookSet must be Ok or Error"
+                    ),
+                },
+                Err(e) => return_server_error!(e),
+            }
+        }
+        "GETHOOK" => {
+            // Get links for a hook
+            let prefix = key;
+            let (tx, rx) = get_channel();
+            let action = HookManagerAction::Get(tx, prefix);
+            send_data_request!(action, hook_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    HookManagerResponse::Hook(_prefix, links) => {
+                        let mut response = String::new();
+                        for link in links {
+                            response += &link[..];
+                            response += "\n";
+                        }
+                        return_ok_with_value!(response);
+                    }
+                    HookManagerResponse::Error(e) => return_client_error!(e),
+                    _ => return_server_error!(
+                        "Well, it should not happen, response for HookSet must be Hook or Error"
+                    ),
+                },
+                Err(e) => return_server_error!(e),
+            }
+        }
+        "REMHOOK" => {
+            // Delete an existing hook
+            if value.is_empty() {
+                tracing::debug!("no link specified for SETHOOK action");
+                return_client_error!("Link is missing")
+            }
+            let prefix = key;
+            let link = value;
+
+            let (tx, rx) = get_channel();
+            let action = HookManagerAction::Remove(tx, prefix, link);
+            send_data_request!(action, hook_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    HookManagerResponse::Ok => return_ok!(),
+                    HookManagerResponse::Error(e) => return_client_error!(e),
+                    _ => return_server_error!(
+                        "Well, it should not happen, response for HookSet must be Ok or Error"
+                    ),
+                },
+                Err(e) => return_server_error!(e),
+            }
+        }
+        "LISTHOOK" => {
+            // List hooks based on a prefix
+            let prefix = key;
+            let (tx, rx) = get_channel();
+            let action = HookManagerAction::List(tx, prefix);
+            send_data_request!(action, hook_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    HookManagerResponse::HookList(hooks) => {
+                        let mut response = String::new();
+                        for (prefix, links) in hooks {
+                            response += format!("{} {:?}", prefix, links).as_str();
+                        }
+                        return_ok_with_value!(response);
+                    }
+                    HookManagerResponse::Error(e) => return_client_error!(e),
+                    _ => return_server_error!(
+                        "Well, it should not happen, response for HookSet must be Hooks or Error"
+                    ),
+                },
+                Err(e) => return_server_error!(e),
+            }
+        }
+        "SUSPEND" => {
+            if key != "LOG" {
+                return_client_error!("Invalid command, you may wanted to write: SUSPEND LOG");
+            }
+
+            let logger_sender = match logger_sender {
+                Some(sender) => sender,
+                None => return_client_error!("Logger is not initialized"),
+            };
+
+            let (tx, rx) = channel();
+            let action = LoggerAction::Suspend(tx);
+            send_data_request!(action, logger_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    LoggerResponse::Ok => return_ok!(),
+                    LoggerResponse::Err(e) => return_client_error!(e),
+                },
+                Err(e) => return_server_error!(e),
+            }
+        }
+        "RESUME" => {
+            if key != "LOG" {
+                return_client_error!("Invalid command, you may wanted to write: SUSPEND LOG");
+            }
+
+            let logger_sender = match logger_sender {
+                Some(sender) => sender,
+                None => return_client_error!("Logger is not initialized"),
+            };
+
+            let (tx, rx) = channel();
+            let action = LoggerAction::Resume(tx);
+            send_data_request!(action, logger_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    LoggerResponse::Ok => return_ok!(),
+                    LoggerResponse::Err(e) => return_client_error!(e),
+                },
+                Err(e) => return_server_error!(e),
+            }
+        }
         _ => (),
     }
 
@@ -171,7 +347,12 @@ fn handle_command(
 }
 
 /// Run Classic interface
-pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) {
+pub async fn run_async(
+    data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+    address: String,
+    hook_sender: Arc<Mutex<Sender<HookManagerAction>>>,
+    logger_sender: Option<Arc<Mutex<Sender<LoggerAction>>>>,
+) {
     tracing::info!("classic interface on {} is starting...", address);
 
     // Try to bind for address
@@ -189,6 +370,8 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
 
         // Spawn thread for them
         let data_sender = data_sender.clone();
+        let hook_sender = hook_sender.clone();
+        let logger_sender = logger_sender.clone();
         tokio::spawn(async move {
             let mut request: Vec<u8> = Vec::with_capacity(4096);
 
@@ -201,7 +384,7 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
                     Ok(n) if n == 0 => {
                         tracing::trace!("has read EOF");
                         break;
-                    },
+                    }
                     Ok(n) => {
                         tracing::trace!("has read {} bytes", n);
                         for byte in &buffer[0..n] {
@@ -217,7 +400,7 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
             tracing::trace!("has been read {} bytes", request.len());
 
             // Handle it
-            let response = match parse_request(request, data_sender) {
+            let response = match parse_request(request, data_sender, hook_sender, logger_sender) {
                 Ok(vector) => String::from_utf8(vector).unwrap(),
                 Err(e) => e,
             };

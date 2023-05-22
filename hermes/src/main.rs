@@ -1,7 +1,5 @@
 use std::process::exit;
 use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
-
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 mod interfaces;
@@ -51,26 +49,40 @@ async fn main_async() {
         }
     };
 
-    // Initialize datastore-rs
+    // Initialize HookManager for datastore
     let (hook_sender, hook_thread) = onlyati_datastore::hook::utilities::start_hook_manager();
-    let mut logger_thread: Option<JoinHandle<()>> = None;
+    let hook_sender = Arc::new(Mutex::new(hook_sender));
 
-    let (sender, db_thread) = match config.get("logger.location") {
+    // Initialize Logger for datastore
+    let (logger_sender, logger_thread) = match config.get("logger.location") {
         Some(path) => {
-            let (logger_sender, logger_inner_thread) =
-                onlyati_datastore::logger::utilities::start_logger(path);
-            logger_thread = Some(logger_inner_thread);
+            let (sender, thread) = onlyati_datastore::logger::utilities::start_logger(path);
+            let sender = Arc::new(Mutex::new(sender));
+            (Some(sender), Some(thread))
+        }
+        None => (None, None),
+    };
+
+    // Initialize datastore
+    let (sender, db_thread) = match &logger_sender {
+        Some(logger_sender) => {
+            let hook_sender = hook_sender.clone();
+            let logger_sender = logger_sender.clone();
+
             onlyati_datastore::datastore::utilities::start_datastore(
                 "root".to_string(),
                 Some(hook_sender),
                 Some(logger_sender),
             )
         }
-        None => onlyati_datastore::datastore::utilities::start_datastore(
-            "root".to_string(),
-            Some(hook_sender),
-            None,
-        ),
+        None => {
+            let hook_sender = hook_sender.clone();
+            onlyati_datastore::datastore::utilities::start_datastore(
+                "root".to_string(),
+                Some(hook_sender),
+                None,
+            )
+        }
     };
 
     // Parse the input data for database and hooks too
@@ -101,8 +113,19 @@ async fn main_async() {
 
     // Register classic interface
     if let Some(addr) = config.get("host.classic.address") {
+        let hook_sender = hook_sender.clone();
+        let logger_sender = match &logger_sender {
+            Some(logger) => Some(logger.clone()),
+            None => None,
+        };
+
         handler.register_interface(
-            Box::new(Classic::new(sender.clone(), addr.clone())),
+            Box::new(Classic::new(
+                sender.clone(),
+                addr.clone(),
+                hook_sender,
+                logger_sender,
+            )),
             "Classic".to_string(),
         )
     }
