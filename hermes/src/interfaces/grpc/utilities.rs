@@ -8,10 +8,10 @@ use tower_http::trace::TraceLayer;
 
 // Internal depencies
 use hermes::hermes_server::{Hermes, HermesServer};
-use hermes::{Empty, Hook, HookCollection, Key, KeyList, Pair};
+use hermes::{Empty, Hook, HookCollection, Key, KeyList, LinkCollection, Pair};
 use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction, utilities};
 use onlyati_datastore::hook::enums::{HookManagerAction, HookManagerResponse};
-use onlyati_datastore::logger::enums::LoggerAction;
+use onlyati_datastore::logger::enums::{LoggerAction, LoggerResponse};
 
 // Import macros
 use super::macros::{
@@ -137,6 +137,7 @@ impl Hermes for HermesGrpc {
         }
     }
 
+    /// Create a new hook
     async fn set_hook(&self, request: Request<Pair>) -> Result<Response<Empty>, Status> {
         let request = request.into_inner();
         let hook_sender = check_self_sender!(&self.hook_sender);
@@ -149,30 +150,129 @@ impl Hermes for HermesGrpc {
             Ok(response) => match response {
                 HookManagerResponse::Ok => return_ok_with_value!(Empty::default()),
                 HookManagerResponse::Error(e) => return_client_error!(e),
-                _ => return_server_error!("it should not happen, this request should return with Ok or Error"),
+                _ => return_server_error!(
+                    "it should not happen, this request should return with Ok or Error"
+                ),
             },
             Err(e) => return_server_error!(e),
         }
     }
 
-    async fn get_hook(&self, request: Request<Key>) -> Result<Response<Hook>, Status> {
-        unimplemented!();
-    }
-
+    /// Remove existing hook
     async fn delete_hook(&self, request: Request<Pair>) -> Result<Response<Empty>, Status> {
-        unimplemented!();
+        let request = request.into_inner();
+        let hook_sender = check_self_sender!(&self.hook_sender);
+
+        let (tx, rx) = channel();
+        let action = HookManagerAction::Remove(tx, request.key, request.value);
+        send_data_request!(action, hook_sender);
+
+        match rx.recv() {
+            Ok(response) => match response {
+                HookManagerResponse::Ok => return_ok_with_value!(Empty::default()),
+                HookManagerResponse::Error(e) => return_client_error!(e),
+                _ => return_server_error!(
+                    "it should not happen, this request should return with Ok or Error"
+                ),
+            },
+            Err(e) => return_server_error!(e),
+        }
     }
 
+    /// Check that hook exist
+    async fn get_hook(&self, request: Request<Key>) -> Result<Response<Hook>, Status> {
+        let request = request.into_inner();
+        let hook_sender = check_self_sender!(&self.hook_sender);
+
+        let (tx, rx) = channel();
+        let action = HookManagerAction::Get(tx, request.key);
+        send_data_request!(action, hook_sender);
+
+        match rx.recv() {
+            Ok(response) => match response {
+                HookManagerResponse::Hook(prefix, links) => {
+                    let collection = LinkCollection { links: links };
+                    let hook = Hook {
+                        prefix: prefix,
+                        links: Some(collection),
+                    };
+                    return_ok_with_value!(hook);
+                }
+                HookManagerResponse::Error(e) => return_client_error!(e),
+                _ => return_server_error!(
+                    "it should not happen, this request should return with Hook or Error"
+                ),
+            },
+            Err(e) => return_server_error!(e),
+        }
+    }
+
+    /// List hooks under a prefix
     async fn list_hooks(&self, request: Request<Key>) -> Result<Response<HookCollection>, Status> {
-        unimplemented!();
+        let request = request.into_inner();
+        let hook_sender = check_self_sender!(&self.hook_sender);
+
+        let (tx, rx) = channel();
+        let action = HookManagerAction::List(tx, request.key);
+        send_data_request!(action, hook_sender);
+
+        match rx.recv() {
+            Ok(response) => match response {
+                HookManagerResponse::HookList(hooks) => {
+                    let mut collection = HookCollection { hooks: Vec::new() };
+
+                    for (prefix, links) in hooks {
+                        let links = LinkCollection { links: links };
+                        let hook = Hook {
+                            prefix: prefix,
+                            links: Some(links),
+                        };
+                        collection.hooks.push(hook);
+                    }
+
+                    return_ok_with_value!(collection);
+                },
+                HookManagerResponse::Error(e) => return_client_error!(e),
+                _ => return_server_error!(
+                    "it should not happen, this request should return with HookList or Error"
+                ),
+            },
+            Err(e) => return_server_error!(e),
+        }
     }
 
-    async fn suspend_log(&self, request: Request<Empty>) -> Result<Response<Empty>, Status> {
-        unimplemented!();
+    /// Suspend logger
+    async fn suspend_log(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
+        let logger_sender = check_self_sender!(&self.logger_sender);
+
+        let (tx, rx) = channel();
+        let action = LoggerAction::Suspend(tx);
+        send_data_request!(action, logger_sender);
+
+        match rx.recv() {
+            Ok(response) => match response {
+                LoggerResponse::Ok => return_ok_with_value!(Empty::default()),
+                LoggerResponse::Err(e) => return_client_error!(e),
+            },
+            Err(e) => return_server_error!(e),
+        }
     }
 
-    async fn resume_log(&self, request: Request<Empty>) -> Result<Response<Empty>, Status> {
-        unimplemented!();
+    /// Resume logger
+    async fn resume_log(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
+        let logger_sender = check_self_sender!(&self.logger_sender);
+
+        let (tx, rx) = channel();
+        let action = LoggerAction::Resume(tx);
+        send_data_request!(action, logger_sender);
+
+        match rx.recv() {
+            Ok(response) => match response {
+                LoggerResponse::Ok => return_ok_with_value!(Empty::default()),
+                LoggerResponse::Err(e) => return_client_error!(e),
+            },
+            Err(e) => return_server_error!(e),
+        }
     }
 }
 
