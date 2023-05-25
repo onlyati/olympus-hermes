@@ -17,8 +17,6 @@ use tower_http::trace::TraceLayer;
 
 // Internal depencies
 use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction, utilities};
-use onlyati_datastore::hook::enums::{HookManagerAction, HookManagerResponse};
-use onlyati_datastore::logger::enums::{LoggerAction, LoggerResponse};
 
 // Import macroes
 use super::macros::{
@@ -29,8 +27,6 @@ use super::macros::{
 #[derive(Clone)]
 pub struct InjectedData {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
-    hook_sender: Arc<Mutex<Sender<HookManagerAction>>>,
-    logger_sender: Option<Arc<Mutex<Sender<LoggerAction>>>>,
 }
 
 /// Struct is used to query the SET endpoint
@@ -163,14 +159,13 @@ async fn set_hook(
     Json(pair): Json<Pair>,
 ) -> impl IntoResponse {
     let (tx, rx) = channel();
-    let action = HookManagerAction::Set(tx, pair.key, pair.value);
-    send_data_request!(action, injected.hook_sender);
+    let action = DatabaseAction::HookSet(tx, pair.key, pair.value);
+    send_data_request!(action, injected.data_sender);
 
     match rx.recv() {
         Ok(response) => match response {
-            HookManagerResponse::Ok => return_ok!(),
-            HookManagerResponse::Error(e) => return_client_error!(e),
-            _ => return_server_error!("this should happen request should have return Ok or Error"),
+            Ok(_) => return_ok!(),
+            Err(e) => return_client_error!(e.to_string()),
         },
         Err(e) => return_server_error!(e),
     }
@@ -182,21 +177,18 @@ async fn get_hook(
     Query(key): Query<KeyParm>,
 ) -> impl IntoResponse {
     let (tx, rx) = channel();
-    let action = HookManagerAction::Get(tx, key.key);
-    send_data_request!(action, injected.hook_sender);
+    let action = DatabaseAction::HookGet(tx, key.key);
+    send_data_request!(action, injected.data_sender);
 
     match rx.recv() {
         Ok(response) => match response {
-            HookManagerResponse::Hook(prefix, links) => {
+            Ok((prefix, links)) => {
                 return_ok_with_value!(Hook {
                     prefix: prefix,
                     links: links
                 });
             }
-            HookManagerResponse::Error(e) => return_client_error!(e),
-            _ => {
-                return_server_error!("this should happen request should have return Hook or Error")
-            }
+            Err(e) => return_client_error!(e.to_string()),
         },
         Err(e) => return_server_error!(e),
     }
@@ -208,14 +200,13 @@ async fn delete_hook(
     Query(pair): Query<Pair>,
 ) -> impl IntoResponse {
     let (tx, rx) = channel();
-    let action = HookManagerAction::Remove(tx, pair.key, pair.value);
-    send_data_request!(action, injected.hook_sender);
+    let action = DatabaseAction::HookRemove(tx, pair.key, pair.value);
+    send_data_request!(action, injected.data_sender);
 
     match rx.recv() {
         Ok(response) => match response {
-            HookManagerResponse::Ok => return_ok!(),
-            HookManagerResponse::Error(e) => return_client_error!(e),
-            _ => return_server_error!("this should happen request should have return Ok or Error"),
+            Ok(_) => return_ok!(),
+            Err(e) => return_client_error!(e.to_string()),
         },
         Err(e) => return_server_error!(e),
     }
@@ -227,12 +218,12 @@ async fn list_hooks(
     Query(key): Query<KeyParm>,
 ) -> impl IntoResponse {
     let (tx, rx) = channel();
-    let action = HookManagerAction::List(tx, key.key);
-    send_data_request!(action, injected.hook_sender);
+    let action = DatabaseAction::HookList(tx, key.key);
+    send_data_request!(action, injected.data_sender);
 
     match rx.recv() {
         Ok(response) => match response {
-            HookManagerResponse::HookList(hooks) => {
+            Ok(hooks) => {
                 let mut collection: Vec<Hook> = Vec::new();
 
                 for (prefix, links) in hooks {
@@ -244,10 +235,7 @@ async fn list_hooks(
 
                 return_ok_with_value!(collection);
             }
-            HookManagerResponse::Error(e) => return_client_error!(e),
-            _ => return_server_error!(
-                "this should happen request should have return HookList or Error"
-            ),
+            Err(e) => return_client_error!(e.to_string()),
         },
         Err(e) => return_server_error!(e),
     }
@@ -256,18 +244,14 @@ async fn list_hooks(
 /// SUSPEND LOG
 async fn suspend_log(State(injected): State<InjectedData>) -> impl IntoResponse {
     let (tx, rx) = channel();
-    let action = LoggerAction::Suspend(tx);
+    let action = DatabaseAction::SuspendLog(tx);
 
-    let sender = match &injected.logger_sender {
-        Some(sender) => sender,
-        None => return_server_error!("suspend was request but logger is off"),
-    };
-    send_data_request!(action, sender);
+    send_data_request!(action, injected.data_sender);
 
     match rx.recv() {
         Ok(response) => match response {
-            LoggerResponse::Ok => return_ok!(),
-            LoggerResponse::Err(e) => return_client_error!(e),
+            Ok(_) => return_ok!(),
+            Err(e) => return_client_error!(e.to_string()),
         },
         Err(e) => return_server_error!(e),
     }
@@ -276,30 +260,21 @@ async fn suspend_log(State(injected): State<InjectedData>) -> impl IntoResponse 
 /// RESUME LOG
 async fn resume_log(State(injected): State<InjectedData>) -> impl IntoResponse {
     let (tx, rx) = channel();
-    let action = LoggerAction::Resume(tx);
+    let action = DatabaseAction::ResumeLog(tx);
 
-    let sender = match &injected.logger_sender {
-        Some(sender) => sender,
-        None => return_server_error!("suspend was request but logger is off"),
-    };
-    send_data_request!(action, sender);
+    send_data_request!(action, injected.data_sender);
 
     match rx.recv() {
         Ok(response) => match response {
-            LoggerResponse::Ok => return_ok!(),
-            LoggerResponse::Err(e) => return_client_error!(e),
+            Ok(_) => return_ok!(),
+            Err(e) => return_client_error!(e.to_string()),
         },
         Err(e) => return_server_error!(e),
     }
 }
 
 /// Start the REST server
-pub async fn run_async(
-    data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
-    address: String,
-    hook_sender: Arc<Mutex<Sender<HookManagerAction>>>,
-    logger_sender: Option<Arc<Mutex<Sender<LoggerAction>>>>,
-) {
+pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) {
     tracing::info!("REST interface on {} is starting...", address);
 
     let app = Router::new()
@@ -329,11 +304,7 @@ pub async fn run_async(
                 .layer(TraceLayer::new_for_http())
                 .into_inner(),
         )
-        .with_state(InjectedData {
-            data_sender,
-            hook_sender,
-            logger_sender,
-        });
+        .with_state(InjectedData { data_sender });
 
     let address: SocketAddr = address.parse().expect("Unable to parse REST api address");
 

@@ -129,19 +129,8 @@ async fn main_async() {
 
     // Register REST interface
     if let Some(addr) = config.get("host.rest.address") {
-        let hook_sender = hook_sender.clone();
-        let logger_sender = match &logger_sender {
-            Some(logger) => Some(logger.clone()),
-            None => None,
-        };
-
         handler.register_interface(
-            Box::new(Rest::new(
-                sender.clone(),
-                addr.clone(),
-                hook_sender,
-                logger_sender,
-            )),
+            Box::new(Rest::new(sender.clone(), addr.clone())),
             "REST".to_string(),
         )
     }
