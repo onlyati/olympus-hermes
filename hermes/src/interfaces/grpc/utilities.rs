@@ -10,8 +10,6 @@ use tower_http::trace::TraceLayer;
 use hermes::hermes_server::{Hermes, HermesServer};
 use hermes::{Empty, Hook, HookCollection, Key, KeyList, LinkCollection, Pair};
 use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction, utilities};
-use onlyati_datastore::hook::enums::{HookManagerAction, HookManagerResponse};
-use onlyati_datastore::logger::enums::{LoggerAction, LoggerResponse};
 
 // Import macros
 use super::macros::{
@@ -28,8 +26,6 @@ mod hermes {
 #[derive(Debug, Default)]
 struct HermesGrpc {
     data_sender: Option<Arc<Mutex<Sender<DatabaseAction>>>>,
-    hook_sender: Option<Arc<Mutex<Sender<HookManagerAction>>>>,
-    logger_sender: Option<Arc<Mutex<Sender<LoggerAction>>>>,
 }
 
 /// gRPC endpoints
@@ -140,19 +136,16 @@ impl Hermes for HermesGrpc {
     /// Create a new hook
     async fn set_hook(&self, request: Request<Pair>) -> Result<Response<Empty>, Status> {
         let request = request.into_inner();
-        let hook_sender = check_self_sender!(&self.hook_sender);
+        let data_sender = check_self_sender!(&self.data_sender);
 
         let (tx, rx) = channel();
-        let action = HookManagerAction::Set(tx, request.key, request.value);
-        send_data_request!(action, hook_sender);
+        let action = DatabaseAction::HookSet(tx, request.key, request.value);
+        send_data_request!(action, data_sender);
 
         match rx.recv() {
             Ok(response) => match response {
-                HookManagerResponse::Ok => return_ok_with_value!(Empty::default()),
-                HookManagerResponse::Error(e) => return_client_error!(e),
-                _ => return_server_error!(
-                    "it should not happen, this request should return with Ok or Error"
-                ),
+                Ok(_) => return_ok_with_value!(Empty::default()),
+                Err(e) => return_client_error!(e.to_string()),
             },
             Err(e) => return_server_error!(e),
         }
@@ -161,19 +154,16 @@ impl Hermes for HermesGrpc {
     /// Remove existing hook
     async fn delete_hook(&self, request: Request<Pair>) -> Result<Response<Empty>, Status> {
         let request = request.into_inner();
-        let hook_sender = check_self_sender!(&self.hook_sender);
+        let data_sender = check_self_sender!(&self.data_sender);
 
         let (tx, rx) = channel();
-        let action = HookManagerAction::Remove(tx, request.key, request.value);
-        send_data_request!(action, hook_sender);
+        let action = DatabaseAction::HookRemove(tx, request.key, request.value);
+        send_data_request!(action, data_sender);
 
         match rx.recv() {
             Ok(response) => match response {
-                HookManagerResponse::Ok => return_ok_with_value!(Empty::default()),
-                HookManagerResponse::Error(e) => return_client_error!(e),
-                _ => return_server_error!(
-                    "it should not happen, this request should return with Ok or Error"
-                ),
+                Ok(_) => return_ok_with_value!(Empty::default()),
+                Err(e) => return_client_error!(e.to_string()),
             },
             Err(e) => return_server_error!(e),
         }
@@ -182,15 +172,15 @@ impl Hermes for HermesGrpc {
     /// Check that hook exist
     async fn get_hook(&self, request: Request<Key>) -> Result<Response<Hook>, Status> {
         let request = request.into_inner();
-        let hook_sender = check_self_sender!(&self.hook_sender);
+        let data_sender = check_self_sender!(&self.data_sender);
 
         let (tx, rx) = channel();
-        let action = HookManagerAction::Get(tx, request.key);
-        send_data_request!(action, hook_sender);
+        let action = DatabaseAction::HookGet(tx, request.key);
+        send_data_request!(action, data_sender);
 
         match rx.recv() {
             Ok(response) => match response {
-                HookManagerResponse::Hook(prefix, links) => {
+                Ok((prefix, links)) => {
                     let collection = LinkCollection { links: links };
                     let hook = Hook {
                         prefix: prefix,
@@ -198,10 +188,7 @@ impl Hermes for HermesGrpc {
                     };
                     return_ok_with_value!(hook);
                 }
-                HookManagerResponse::Error(e) => return_client_error!(e),
-                _ => return_server_error!(
-                    "it should not happen, this request should return with Hook or Error"
-                ),
+                Err(e) => return_client_error!(e.to_string()),
             },
             Err(e) => return_server_error!(e),
         }
@@ -210,15 +197,15 @@ impl Hermes for HermesGrpc {
     /// List hooks under a prefix
     async fn list_hooks(&self, request: Request<Key>) -> Result<Response<HookCollection>, Status> {
         let request = request.into_inner();
-        let hook_sender = check_self_sender!(&self.hook_sender);
+        let data_sender = check_self_sender!(&self.data_sender);
 
         let (tx, rx) = channel();
-        let action = HookManagerAction::List(tx, request.key);
-        send_data_request!(action, hook_sender);
+        let action = DatabaseAction::HookList(tx, request.key);
+        send_data_request!(action, data_sender);
 
         match rx.recv() {
             Ok(response) => match response {
-                HookManagerResponse::HookList(hooks) => {
+                Ok(hooks) => {
                     let mut collection = HookCollection { hooks: Vec::new() };
 
                     for (prefix, links) in hooks {
@@ -231,11 +218,8 @@ impl Hermes for HermesGrpc {
                     }
 
                     return_ok_with_value!(collection);
-                },
-                HookManagerResponse::Error(e) => return_client_error!(e),
-                _ => return_server_error!(
-                    "it should not happen, this request should return with HookList or Error"
-                ),
+                }
+                Err(e) => return_client_error!(e.to_string()),
             },
             Err(e) => return_server_error!(e),
         }
@@ -243,16 +227,16 @@ impl Hermes for HermesGrpc {
 
     /// Suspend logger
     async fn suspend_log(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
-        let logger_sender = check_self_sender!(&self.logger_sender);
+        let data_sender = check_self_sender!(&self.data_sender);
 
         let (tx, rx) = channel();
-        let action = LoggerAction::Suspend(tx);
-        send_data_request!(action, logger_sender);
+        let action = DatabaseAction::SuspendLog(tx);
+        send_data_request!(action, data_sender);
 
         match rx.recv() {
             Ok(response) => match response {
-                LoggerResponse::Ok => return_ok_with_value!(Empty::default()),
-                LoggerResponse::Err(e) => return_client_error!(e),
+                Ok(_) => return_ok_with_value!(Empty::default()),
+                Err(e) => return_client_error!(e.to_string()),
             },
             Err(e) => return_server_error!(e),
         }
@@ -260,16 +244,16 @@ impl Hermes for HermesGrpc {
 
     /// Resume logger
     async fn resume_log(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
-        let logger_sender = check_self_sender!(&self.logger_sender);
+        let data_sender = check_self_sender!(&self.data_sender);
 
         let (tx, rx) = channel();
-        let action = LoggerAction::Resume(tx);
-        send_data_request!(action, logger_sender);
+        let action = DatabaseAction::ResumeLog(tx);
+        send_data_request!(action, data_sender);
 
         match rx.recv() {
             Ok(response) => match response {
-                LoggerResponse::Ok => return_ok_with_value!(Empty::default()),
-                LoggerResponse::Err(e) => return_client_error!(e),
+                Ok(_) => return_ok_with_value!(Empty::default()),
+                Err(e) => return_client_error!(e.to_string()),
             },
             Err(e) => return_server_error!(e),
         }
@@ -277,16 +261,9 @@ impl Hermes for HermesGrpc {
 }
 
 /// Start gRPC server
-pub async fn run_async(
-    data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
-    address: String,
-    hook_sender: Arc<Mutex<Sender<HookManagerAction>>>,
-    logger_sender: Option<Arc<Mutex<Sender<LoggerAction>>>>,
-) {
+pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) {
     let mut hermes_grpc = HermesGrpc::default();
     hermes_grpc.data_sender = Some(data_sender);
-    hermes_grpc.hook_sender = Some(hook_sender);
-    hermes_grpc.logger_sender = logger_sender;
     let hermes_service = HermesServer::new(hermes_grpc);
 
     tracing::info!("gRPC interface on {} is starting...", address);
