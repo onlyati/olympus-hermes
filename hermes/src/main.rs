@@ -49,41 +49,22 @@ async fn main_async() {
         }
     };
 
-    // Initialize HookManager for datastore
+    // Initialize HookManager and Logger for Datastore
     let (hook_sender, hook_thread) = onlyati_datastore::hook::utilities::start_hook_manager();
-    let hook_sender = Arc::new(Mutex::new(hook_sender));
-
-    // Initialize Logger for datastore
     let (logger_sender, logger_thread) = match config.get("logger.location") {
-        Some(path) => {
-            let (sender, thread) = onlyati_datastore::logger::utilities::start_logger(path);
-            let sender = Arc::new(Mutex::new(sender));
-            (Some(sender), Some(thread))
-        }
-        None => (None, None),
-    };
-
-    // Initialize datastore
-    let (sender, db_thread) = match &logger_sender {
-        Some(logger_sender) => {
-            let hook_sender = hook_sender.clone();
-            let logger_sender = logger_sender.clone();
-
-            onlyati_datastore::datastore::utilities::start_datastore(
-                "root".to_string(),
-                Some(hook_sender),
-                Some(logger_sender),
-            )
-        }
+        Some(path) => onlyati_datastore::logger::utilities::start_logger(path),
         None => {
-            let hook_sender = hook_sender.clone();
-            onlyati_datastore::datastore::utilities::start_datastore(
-                "root".to_string(),
-                Some(hook_sender),
-                None,
-            )
+            tracing::error!("logger location is not defined");
+            panic!("logger location is not defined");
         }
     };
+
+    // Initialize Datastore
+    let (sender, db_thread) = onlyati_datastore::datastore::utilities::start_datastore(
+        "/root".to_string(),
+        Some(hook_sender),
+        Some(logger_sender),
+    );
 
     // Parse the input data for database and hooks too
     utilities::parse_input_data("init.data", &config, &sender).unwrap_or_else(|x| panic!("{}", x));
@@ -104,12 +85,10 @@ async fn main_async() {
         "Datastore".to_string(),
     );
 
-    if let Some(logger_thread) = logger_thread {
-        handler.register_interface(
-            Box::new(Dummy::new(Some(logger_thread))),
-            "Logger".to_string(),
-        )
-    }
+    handler.register_interface(
+        Box::new(Dummy::new(Some(logger_thread))),
+        "Logger".to_string(),
+    );
 
     // Register classic interface
     if let Some(addr) = config.get("host.classic.address") {
