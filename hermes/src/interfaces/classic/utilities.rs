@@ -1,8 +1,5 @@
 // External dependencies
 use bytes::BytesMut;
-use onlyati_datastore::hook::enums::{HookManagerAction, HookManagerResponse};
-use onlyati_datastore::hook::utilities::get_channel;
-use onlyati_datastore::logger::enums::{LoggerAction, LoggerResponse};
 use std::sync::mpsc::channel;
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -23,8 +20,6 @@ use super::macros::{
 pub fn parse_request(
     request: Vec<u8>,
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
-    hook_sender: Arc<Mutex<Sender<HookManagerAction>>>,
-    logger_sender: Option<Arc<Mutex<Sender<LoggerAction>>>>,
 ) -> Result<Vec<u8>, String> {
     let valid_commands = vec![
         "SET",
@@ -83,14 +78,7 @@ pub fn parse_request(
     );
 
     // Execute what the request asked then return with a reponse
-    return Ok(handle_command(
-        command,
-        key,
-        value,
-        data_sender,
-        hook_sender,
-        logger_sender,
-    ));
+    return Ok(handle_command(command, key, value, data_sender));
 }
 
 /// Requst has been parsed and this function executes what it had to
@@ -99,8 +87,6 @@ fn handle_command(
     key: String,
     value: String,
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
-    hook_sender: Arc<Mutex<Sender<HookManagerAction>>>,
-    logger_sender: Option<Arc<Mutex<Sender<LoggerAction>>>>,
 ) -> Vec<u8> {
     // Key is required for all request
     if key.is_empty() {
@@ -208,17 +194,14 @@ fn handle_command(
             let prefix = key;
             let link = value;
 
-            let (tx, rx) = get_channel();
-            let action = HookManagerAction::Set(tx, prefix, link);
-            send_data_request!(action, hook_sender);
+            let (tx, rx) = channel();
+            let action = DatabaseAction::HookSet(tx, prefix, link);
+            send_data_request!(action, data_sender);
 
             match rx.recv() {
                 Ok(response) => match response {
-                    HookManagerResponse::Ok => return_ok!(),
-                    HookManagerResponse::Error(e) => return_client_error!(e),
-                    _ => return_server_error!(
-                        "Well, it should not happen, response for HookSet must be Ok or Error"
-                    ),
+                    Ok(_) => return_ok!(),
+                    Err(e) => return_client_error!(e),
                 },
                 Err(e) => return_server_error!(e),
             }
@@ -226,13 +209,13 @@ fn handle_command(
         "GETHOOK" => {
             // Get links for a hook
             let prefix = key;
-            let (tx, rx) = get_channel();
-            let action = HookManagerAction::Get(tx, prefix);
-            send_data_request!(action, hook_sender);
+            let (tx, rx) = channel();
+            let action = DatabaseAction::HookGet(tx, prefix);
+            send_data_request!(action, data_sender);
 
             match rx.recv() {
                 Ok(response) => match response {
-                    HookManagerResponse::Hook(_prefix, links) => {
+                    Ok((_prefix, links)) => {
                         let mut response = String::new();
                         for link in links {
                             response += &link[..];
@@ -240,10 +223,7 @@ fn handle_command(
                         }
                         return_ok_with_value!(response);
                     }
-                    HookManagerResponse::Error(e) => return_client_error!(e),
-                    _ => return_server_error!(
-                        "Well, it should not happen, response for HookSet must be Hook or Error"
-                    ),
+                    Err(e) => return_client_error!(e),
                 },
                 Err(e) => return_server_error!(e),
             }
@@ -257,17 +237,14 @@ fn handle_command(
             let prefix = key;
             let link = value;
 
-            let (tx, rx) = get_channel();
-            let action = HookManagerAction::Remove(tx, prefix, link);
-            send_data_request!(action, hook_sender);
+            let (tx, rx) = channel();
+            let action = DatabaseAction::HookRemove(tx, prefix, link);
+            send_data_request!(action, data_sender);
 
             match rx.recv() {
                 Ok(response) => match response {
-                    HookManagerResponse::Ok => return_ok!(),
-                    HookManagerResponse::Error(e) => return_client_error!(e),
-                    _ => return_server_error!(
-                        "Well, it should not happen, response for HookSet must be Ok or Error"
-                    ),
+                    Ok(_) => return_ok!(),
+                    Err(e) => return_client_error!(e),
                 },
                 Err(e) => return_server_error!(e),
             }
@@ -275,23 +252,20 @@ fn handle_command(
         "LISTHOOKS" => {
             // List hooks based on a prefix
             let prefix = key;
-            let (tx, rx) = get_channel();
-            let action = HookManagerAction::List(tx, prefix);
-            send_data_request!(action, hook_sender);
+            let (tx, rx) = channel();
+            let action = DatabaseAction::HookList(tx, prefix);
+            send_data_request!(action, data_sender);
 
             match rx.recv() {
                 Ok(response) => match response {
-                    HookManagerResponse::HookList(hooks) => {
+                    Ok(hooks) => {
                         let mut response = String::new();
                         for (prefix, links) in hooks {
                             response += format!("{} {:?}\n", prefix, links).as_str();
                         }
                         return_ok_with_value!(response);
                     }
-                    HookManagerResponse::Error(e) => return_client_error!(e),
-                    _ => return_server_error!(
-                        "Well, it should not happen, response for HookSet must be Hooks or Error"
-                    ),
+                    Err(e) => return_client_error!(e),
                 },
                 Err(e) => return_server_error!(e),
             }
@@ -301,19 +275,14 @@ fn handle_command(
                 return_client_error!("Invalid command, you may wanted to write: SUSPEND LOG");
             }
 
-            let logger_sender = match logger_sender {
-                Some(sender) => sender,
-                None => return_client_error!("Logger is not initialized"),
-            };
-
             let (tx, rx) = channel();
-            let action = LoggerAction::Suspend(tx);
-            send_data_request!(action, logger_sender);
+            let action = DatabaseAction::SuspendLog(tx);
+            send_data_request!(action, data_sender);
 
             match rx.recv() {
                 Ok(response) => match response {
-                    LoggerResponse::Ok => return_ok!(),
-                    LoggerResponse::Err(e) => return_client_error!(e),
+                    Ok(_) => return_ok!(),
+                    Err(e) => return_client_error!(e),
                 },
                 Err(e) => return_server_error!(e),
             }
@@ -323,19 +292,14 @@ fn handle_command(
                 return_client_error!("Invalid command, you may wanted to write: SUSPEND LOG");
             }
 
-            let logger_sender = match logger_sender {
-                Some(sender) => sender,
-                None => return_client_error!("Logger is not initialized"),
-            };
-
             let (tx, rx) = channel();
-            let action = LoggerAction::Resume(tx);
-            send_data_request!(action, logger_sender);
+            let action = DatabaseAction::ResumeLog(tx);
+            send_data_request!(action, data_sender);
 
             match rx.recv() {
                 Ok(response) => match response {
-                    LoggerResponse::Ok => return_ok!(),
-                    LoggerResponse::Err(e) => return_client_error!(e),
+                    Ok(_) => return_ok!(),
+                    Err(e) => return_client_error!(e),
                 },
                 Err(e) => return_server_error!(e),
             }
@@ -350,8 +314,6 @@ fn handle_command(
 pub async fn run_async(
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,
-    hook_sender: Arc<Mutex<Sender<HookManagerAction>>>,
-    logger_sender: Option<Arc<Mutex<Sender<LoggerAction>>>>,
 ) {
     tracing::info!("classic interface on {} is starting...", address);
 
@@ -370,8 +332,6 @@ pub async fn run_async(
 
         // Spawn thread for them
         let data_sender = data_sender.clone();
-        let hook_sender = hook_sender.clone();
-        let logger_sender = logger_sender.clone();
         tokio::spawn(async move {
             let mut request: Vec<u8> = Vec::with_capacity(4096);
 
@@ -400,7 +360,7 @@ pub async fn run_async(
             tracing::trace!("has been read {} bytes", request.len());
 
             // Handle it
-            let response = match parse_request(request, data_sender, hook_sender, logger_sender) {
+            let response = match parse_request(request, data_sender) {
                 Ok(vector) => String::from_utf8(vector).unwrap(),
                 Err(e) => e,
             };
