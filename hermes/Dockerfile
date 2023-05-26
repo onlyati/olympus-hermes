@@ -14,20 +14,20 @@ COPY ./Cargo.toml ./Cargo.toml
 
 RUN cargo build --release
 
-FROM debian
+FROM debian:bullseye-slim
 ARG APP=/usr/local/bin
 
 RUN apt-get update && \
     apt-get install -y ca-certificates tzdata coreutils locales && \
     rm -rf /var/lib/apt/lists/*
 
-EXPOSE 3000
-EXPOSE 3001
-EXPOSE 3002
+EXPOSE 3030
+EXPOSE 3031
+EXPOSE 3032
 
 ENV RUST_LOG=info
 
-COPY ./main_default.conf /etc/hermes/main.conf
+COPY ./main_default.conf /etc/defaults/hermes.conf
 COPY ./docker/entry.sh ${APP}/entry.sh
 RUN chmod +x ${APP}/entry.sh
 
