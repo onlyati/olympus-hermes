@@ -26,7 +26,7 @@ cli -H http://127.0.0.1:3031 get --key "/root/status"
 curl "127.0.0.1:3032/db?key=/root/status"
 ```
 
-For more details, check the `docs` directory.
+For more details, check the [docs](docs/README.md).
 
 ## Install manually
 
