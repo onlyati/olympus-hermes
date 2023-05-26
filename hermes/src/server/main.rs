@@ -61,7 +61,7 @@ async fn main_async() {
 
     // Initialize Datastore
     let (sender, db_thread) = onlyati_datastore::datastore::utilities::start_datastore(
-        "/root".to_string(),
+        "root".to_string(),
         Some(hook_sender),
         Some(logger_sender),
     );

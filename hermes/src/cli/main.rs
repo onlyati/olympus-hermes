@@ -1,7 +1,7 @@
 // External dependencies
 use clap::Parser;
 use hermes::hermes_client::HermesClient;
-use hermes::{Empty, Key, KeyList, Pair};
+use hermes::{Empty, Hook, HookCollection, Key, KeyList, Pair};
 use std::process::exit;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig};
 use tonic::{Request, Response, Status};
@@ -43,8 +43,9 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
     match &args.action {
         // GET action
         Action::Get { key } => {
-            let response: Result<Response<Pair>, Status> =
-                grpc_client.get(Request::new(Key { key: key.clone() })).await;
+            let response: Result<Response<Pair>, Status> = grpc_client
+                .get(Request::new(Key { key: key.clone() }))
+                .await;
 
             match response {
                 Ok(resp) => {
@@ -59,10 +60,12 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
         }
         // SET action
         Action::Set { key, value } => {
-            let response: Result<Response<Empty>, Status> = grpc_client.set(Request::new(Pair {
-                key: key.clone(),
-                value: value.clone(),
-            })).await;
+            let response: Result<Response<Empty>, Status> = grpc_client
+                .set(Request::new(Pair {
+                    key: key.clone(),
+                    value: value.clone(),
+                }))
+                .await;
 
             if let Err(e) = response {
                 eprintln!("Failed request: {}", e.message());
@@ -71,9 +74,10 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
         }
         // REMKEY action
         Action::RemKey { key } => {
-            let response: Result<Response<Empty>, Status> =
-                grpc_client.delete_key(Request::new(Key { key: key.clone() })).await;
-            
+            let response: Result<Response<Empty>, Status> = grpc_client
+                .delete_key(Request::new(Key { key: key.clone() }))
+                .await;
+
             if let Err(e) = response {
                 eprintln!("Failed request: {}", e.message());
                 final_rc = 4;
@@ -81,9 +85,10 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
         }
         // REMPATH action
         Action::RemPath { key } => {
-            let response: Result<Response<Empty>, Status> =
-                grpc_client.delete_path(Request::new(Key { key: key.clone() })).await;
-            
+            let response: Result<Response<Empty>, Status> = grpc_client
+                .delete_path(Request::new(Key { key: key.clone() }))
+                .await;
+
             if let Err(e) = response {
                 eprintln!("Failed request: {}", e.message());
                 final_rc = 4;
@@ -91,9 +96,10 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
         }
         // LIST action
         Action::ListKeys { key } => {
-            let response: Result<Response<KeyList>, Status> =
-                grpc_client.list_keys(Request::new(Key { key: key.clone() })).await;
-            
+            let response: Result<Response<KeyList>, Status> = grpc_client
+                .list_keys(Request::new(Key { key: key.clone() }))
+                .await;
+
             match response {
                 Ok(resp) => {
                     let key_list = resp.into_inner();
@@ -101,11 +107,121 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                     for key in key_list.keys {
                         println!("{}", key);
                     }
-                },
+                }
                 Err(e) => {
                     eprintln!("Failed request: {}", e.message());
                     final_rc = 4;
                 }
+            }
+        }
+        // GETHOOK action
+        Action::GetHook { prefix } => {
+            let response: Result<Response<Hook>, Status> = grpc_client
+                .get_hook(Request::new(Key {
+                    key: prefix.clone(),
+                }))
+                .await;
+
+            match response {
+                Ok(resp) => {
+                    let hook = resp.into_inner();
+                    let links = hook.links;
+
+                    match links {
+                        Some(links) => {
+                            for link in links.links {
+                                println!("{}", link);
+                            }
+                        }
+                        None => {
+                            eprintln!("Failed request: No hook found");
+                            final_rc = 4;
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Failed request: {}", e.message());
+                    final_rc = 4;
+                }
+            }
+        }
+        // SETHOOK action
+        Action::SetHook { prefix, link } => {
+            let response: Result<Response<Empty>, Status> = grpc_client
+                .set_hook(Request::new(Pair {
+                    key: prefix.clone(),
+                    value: link.clone(),
+                }))
+                .await;
+
+            if let Err(e) = response {
+                eprintln!("Failed request: {}", e.message());
+                final_rc = 4;
+            }
+        }
+        Action::RemHook { prefix, link } => {
+            let response: Result<Response<Empty>, Status> = grpc_client
+                .delete_hook(Request::new(Pair {
+                    key: prefix.clone(),
+                    value: link.clone(),
+                }))
+                .await;
+
+            if let Err(e) = response {
+                eprintln!("Failed request: {}", e.message());
+                final_rc = 4;
+            }
+        }
+        Action::ListHooks { prefix } => {
+            let response: Result<Response<HookCollection>, Status> = grpc_client
+                .list_hooks(Request::new(Key {
+                    key: prefix.clone(),
+                }))
+                .await;
+
+            match response {
+                Ok(resp) => {
+                    let collection = resp.into_inner();
+
+                    for hook in collection.hooks {
+                        let mut line = String::from(hook.prefix);
+                        match hook.links {
+                            Some(link_collection) => {
+                                for link in link_collection.links {
+                                    line += " ";
+                                    line += &link[..];
+                                }
+                            },
+                            None => {
+                                eprintln!("Failed request: No hook found");
+                                final_rc = 4;
+                            }
+                        }
+                        println!("{}", line);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Failed request: {}", e.message());
+                    final_rc = 4;
+                }
+            }
+        }
+        Action::SuspendLog => {
+            let response: Result<Response<Empty>, Status> =
+                grpc_client.suspend_log(Request::new(Empty {})).await;
+
+            if let Err(e) = response {
+                eprintln!("Failed request: {}", e.message());
+                final_rc = 4;
+            }
+        }
+        Action::ResumeLog => {
+            let response: Result<Response<Empty>, Status> =
+                grpc_client.resume_log(Request::new(Empty {})).await;
+
+            if let Err(e) = response {
+                eprintln!("Failed request: {}", e.message());
+                final_rc = 4;
             }
         }
     }

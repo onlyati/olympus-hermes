@@ -44,57 +44,102 @@ pub enum Action {
     },
 
     /// Remove specified key
-    RemKey{
+    RemKey {
         /// Specify the name of the key
         #[arg(long)]
         key: String,
     },
 
     /// Remove path
-    RemPath{
+    RemPath {
         /// Specify the name of the key
         #[arg(long)]
         key: String,
     },
 
     /// List keys
-    ListKeys{
+    ListKeys {
         /// Specify the name of the key
         #[arg(long)]
         key: String,
     },
+
+    /// Create new hook
+    SetHook {
+        /// Key prefix for hook sending
+        #[arg(long)]
+        prefix: String,
+
+        /// Address where the hook is sent
+        #[arg(long)]
+        link: String
+    },
+
+    /// Check that a hook exists
+    GetHook {
+        /// Key prefix for hook sending
+        #[arg(long)]
+        prefix: String,
+    },
+
+    /// List hooks
+    ListHooks {
+        /// Key prefix for hook sending
+        #[arg(long)]
+        prefix: String,
+    },
+
+    /// Remove existing hook
+    RemHook {
+        #[arg(long)]
+        /// Key prefix for hook sending
+        prefix: String,
+
+        /// Address where the hook is sent
+        #[arg(long)]
+        link: String,
+    },
+
+    /// Suspend file writing for database log
+    SuspendLog,
+
+    /// Resule file writing for database log
+    ResumeLog
 }
 
 fn check_hostname(s: &str) -> Result<String, String> {
     if !s.starts_with("http://") && !s.starts_with("https://") && !s.starts_with("cfg://") {
-        return Err(String::from("Protocol for hostname can be http:// or https:// or cfg://. "));
+        return Err(String::from(
+            "Protocol for hostname can be http:// or https:// or cfg://. ",
+        ));
     }
 
     if s.starts_with("http://") || s.starts_with("https://") {
         if !s.contains(':') {
-            return Err(String::from("Port number is not specified after the hostname. "));
-        }
-        else {
+            return Err(String::from(
+                "Port number is not specified after the hostname. ",
+            ));
+        } else {
             let port = s.split(':').nth(2);
             match port {
-                Some(p) => {
-                    match p.parse::<u32>() {
-                        Ok(num) => {
-                            if num > 65535 {
-                                return Err(String::from("Port number can be between 0..65535"));
-                            }
-                        },
-                        Err(_) => {
-                            return Err(String::from("Failed to convert port number to numbers"));
+                Some(p) => match p.parse::<u32>() {
+                    Ok(num) => {
+                        if num > 65535 {
+                            return Err(String::from("Port number can be between 0..65535"));
                         }
                     }
+                    Err(_) => {
+                        return Err(String::from("Failed to convert port number to numbers"));
+                    }
                 },
-                None => return Err(String::from("Port number is not specified after the hostname. ")),
+                None => {
+                    return Err(String::from(
+                        "Port number is not specified after the hostname. ",
+                    ))
+                }
             }
         }
     }
-
-
 
     return Ok(String::from(s));
 }
