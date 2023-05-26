@@ -3,6 +3,7 @@
         "./cli/Cargo.toml",
         "./hermes/Cargo.toml",
         "./hermes/Cargo.toml",
-        "./stress/Cargo.toml"
+        "./stress/Cargo.toml",
+        "./hermes/Cargo.toml"
     ]
 }
