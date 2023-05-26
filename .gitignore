@@ -1,1 +1,4 @@
 */target
+hermes/docker/var
+hermes/docker/etc
+stress
