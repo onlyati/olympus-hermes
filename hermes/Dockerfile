@@ -28,13 +28,17 @@ EXPOSE 3032
 ENV RUST_LOG=info
 
 COPY ./main_default.conf /etc/defaults/hermes.conf
-COPY ./docker/entry.sh ${APP}/entry.sh
-RUN chmod +x ${APP}/entry.sh
 
 COPY --from=builder /rust-docker/target/release/hermes ${APP}/hermes
 COPY --from=builder /rust-docker/target/release/cli ${APP}/cli
 
+RUN mkdir -p "/usr/var/hermes" && echo "" > /usr/var/hermes/init.dat \
+    && mkdir -p "/usr/var/hermes" && echo "" > /usr/var/hermes/hook.dat \
+    && mkdir -p "/etc/hermes" && cp "/etc/defaults/hermes.conf" "/etc/hermes/main.conf"
+
+VOLUME /usr/var/hermes
+VOLUME /etc/hermes
+
 WORKDIR ${APP}
 
-# ENTRYPOINT "./entry.sh"
-ENTRYPOINT ["/bin/sh", "entry.sh"]
+ENTRYPOINT ./hermes /etc/hermes/main.conf
