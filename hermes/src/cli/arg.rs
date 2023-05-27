@@ -64,6 +64,17 @@ pub enum Action {
         key: String,
     },
 
+    /// Send trigger for hooks
+    Trigger {
+        /// Specify the name of the key
+        #[arg(long)]
+        key: String,
+
+        /// Specify the value for the key
+        #[arg(long)]
+        value: String,
+    },
+
     /// Create new hook
     SetHook {
         /// Key prefix for hook sending
@@ -72,7 +83,7 @@ pub enum Action {
 
         /// Address where the hook is sent
         #[arg(long)]
-        link: String
+        link: String,
     },
 
     /// Check that a hook exists
@@ -104,7 +115,7 @@ pub enum Action {
     SuspendLog,
 
     /// Resule file writing for database log
-    ResumeLog
+    ResumeLog,
 }
 
 fn check_hostname(s: &str) -> Result<String, String> {

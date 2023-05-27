@@ -27,6 +27,7 @@ pub fn parse_request(
         "REMKEY",
         "REMPATH",
         "LIST",
+        "TRIGGER",
         "GETHOOK",
         "SETHOOK",
         "REMHOOK",
@@ -152,6 +153,26 @@ fn handle_command(
                         }
                         return_ok_with_value!(data);
                     }
+                    Err(e) => return_client_error!(e),
+                },
+                Err(e) => return_server_error!(e),
+            }
+        }
+        "TRIGGER"=> {
+            // TRIGGER without value is an error
+            if value.is_empty() {
+                tracing::debug!("no value specified for SET action");
+                return_client_error!("Value is missing")
+            }
+
+            // Handle TRIGGER request
+            let (tx, rx) = channel();
+            let trigger_action = DatabaseAction::Trigger(tx, key, value);
+            send_data_request!(trigger_action, data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return_ok!(),
                     Err(e) => return_client_error!(e),
                 },
                 Err(e) => return_server_error!(e),

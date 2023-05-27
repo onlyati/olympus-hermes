@@ -19,6 +19,7 @@ Hermes has a built-in hook manager, where prefixes can be set and if any key is 
 ```
 
 Hook manager related actions:
+- **TRIGGER**: Hook manager will test the key and send hook if match with predefined prefix. Same effect than with SET but in this case key-value data is not saved
 - **SETHOOK**: Create a new hook
 - **GETHOOK**: Get links for a specific prefix
 - **REMHOOK**: Remove a hook

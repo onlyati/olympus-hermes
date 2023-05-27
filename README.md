@@ -3,7 +3,7 @@
 Hermes is a message queue and in-memory database systems that I use for my hobbi projects. Interfaces are built top of [datastore-rs](https://git.thinkaboutit.tech/PublicProjects/datastore-rs) library. It has all abilities to:
 - Set/Get/Remove keys
 - List keys
-- Set/Get/Remove web hooks
+- Set/Get/Remove/Trigger web hooks
 - Suspend/Resume its logging
 
 ## Example for usage

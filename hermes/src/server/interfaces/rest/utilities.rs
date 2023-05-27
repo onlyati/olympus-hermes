@@ -153,6 +153,25 @@ async fn list_keys(
     }
 }
 
+/// TRIGGER endpoint
+async fn trigger(
+    State(injected): State<InjectedData>,
+    Json(pair): Json<Pair>,
+) -> impl IntoResponse {
+    let (tx, rx) = utilities::get_channel_for_set();
+    let trigger_action = DatabaseAction::Trigger(tx, pair.key.clone(), pair.value.clone());
+
+    send_data_request!(trigger_action, injected.data_sender);
+
+    match rx.recv() {
+        Ok(response) => match response {
+            Ok(_) => return_ok!(),
+            Err(e) => return_client_error!(e.to_string()),
+        },
+        Err(e) => return_server_error!(e),
+    }
+}
+
 /// SET hook
 async fn set_hook(
     State(injected): State<InjectedData>,
@@ -282,6 +301,7 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
         .route("/db", get(get_key))
         .route("/db", delete(delete_key))
         .route("/db_list", get(list_keys))
+        .route("/trigger", post(trigger))
         .route("/hook", post(set_hook))
         .route("/hook", get(get_hook))
         .route("/hook", delete(delete_hook))
