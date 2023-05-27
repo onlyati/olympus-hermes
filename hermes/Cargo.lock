@@ -806,7 +806,7 @@ source = "git+https://git.thinkaboutit.tech/PublicProjects/config-rs?tag=latest#
 [[package]]
 name = "onlyati_datastore"
 version = "0.1.0"
-source = "git+https://git.thinkaboutit.tech/PublicProjects/datastore-rs#39c57635cfcfd822f64af608048897911c23da66"
+source = "git+https://git.thinkaboutit.tech/PublicProjects/datastore-rs?tag=latest#39c57635cfcfd822f64af608048897911c23da66"
 dependencies = [
  "chrono",
  "reqwest",
