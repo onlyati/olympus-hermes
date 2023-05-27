@@ -16,7 +16,7 @@ path = "src/cli/main.rs"
 [dependencies]
 chrono = "0.4.24"
 onlyati_config = { git = "https://git.thinkaboutit.tech/PublicProjects/config-rs", tag = "latest" }
-onlyati_datastore = { git = "https://git.thinkaboutit.tech/PublicProjects/datastore-rs", tag = "testing" }
+onlyati_datastore = { git = "https://git.thinkaboutit.tech/PublicProjects/datastore-rs", tag = "latest" }
 tonic = { version = "0.9.2", features = ["tls"] }
 prost = "0.11.9"
 tokio = { version = "1.28.1", features = ["macros", "rt-multi-thread", "fs", "sync", "time"] }
