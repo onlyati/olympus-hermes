@@ -1,4 +1,0 @@
-2023-05-27 11:33:38.363078164 UTC ListHooks [ '/root' ]
-2023-05-27 11:38:14.503169456 UTC SetHook [ '/root/status/hooks', 'http://127.0.0.1:9999/status-update' ]
-2023-05-27 11:38:14.503209162 UTC SetHook [ '/root/status/hooks', 'http://127.0.0.1.9999/status-update-2' ]
-2023-05-27 11:38:14.503219111 UTC ListHooks [ '/root' ]
