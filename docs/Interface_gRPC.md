@@ -14,6 +14,7 @@ service Hermes {
     rpc DeleteKey (Key) returns (Empty);
     rpc DeletePath (Key) returns (Empty);
     rpc ListKeys (Key) returns (KeyList);
+    rpc Trigger (Pair) returns (Empty);
     rpc SetHook (Pair) returns (Empty);
     rpc GetHook (Key) returns (Hook);
     rpc DeleteHook (Pair) returns (Empty);

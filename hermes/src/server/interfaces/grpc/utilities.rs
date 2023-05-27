@@ -133,6 +133,24 @@ impl Hermes for HermesGrpc {
         }
     }
 
+    /// Endpoint for TRIGGER request
+    async fn trigger(&self, request: Request<Pair>) -> Result<Response<Empty>, Status> {
+        let request = request.into_inner();
+        let data_sender = check_self_sender!(&self.data_sender);
+
+        let (tx, rx) = utilities::get_channel_for_set();
+        let trigger_action = DatabaseAction::Trigger(tx, request.key, request.value);
+        send_data_request!(trigger_action, data_sender);
+
+        match rx.recv() {
+            Ok(response) => match response {
+                Ok(_) => return_ok_with_value!(Empty::default()),
+                Err(e) => return_client_error!(e.to_string()),
+            },
+            Err(e) => return_server_error!(e),
+        }
+    }
+
     /// Create a new hook
     async fn set_hook(&self, request: Request<Pair>) -> Result<Response<Empty>, Status> {
         let request = request.into_inner();

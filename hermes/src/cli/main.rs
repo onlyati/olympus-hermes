@@ -114,6 +114,20 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                 }
             }
         }
+        // TRIGGER action
+        Action::Trigger { key, value } => {
+            let response: Result<Response<Empty>, Status> = grpc_client
+                .trigger(Request::new(Pair {
+                    key: key.clone(),
+                    value: value.clone(),
+                }))
+                .await;
+
+            if let Err(e) = response {
+                eprintln!("Failed request: {}", e.message());
+                final_rc = 4;
+            }
+        }
         // GETHOOK action
         Action::GetHook { prefix } => {
             let response: Result<Response<Hook>, Status> = grpc_client
