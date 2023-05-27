@@ -8,6 +8,8 @@ These commands does not requires any extra library, they are just simple text th
 | GET       | Get value of a key                 | GET _key_               |
 | REMKEY    | Remove specific key                | REMKEY _key_            |
 | REMPATH   | Remove everything under a path     | REMPATH _key_           |
+| LIST      | List keys under a path             | LIST _key_              |
+| TRIGGER   | Trigger hooks                      | TRIGGER _key_ _value_   |
 | SETHOOK   | Create a new hook                  | SETHOOK _prefix_ _link_ |
 | GETHOOK   | Get all link for a specific hook   | GETHOOK _prefix_        |
 | REMHOOK   | Remove specific hook               | REMHOOK _prefix_ _link_ |

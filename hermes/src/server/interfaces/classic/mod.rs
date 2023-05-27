@@ -16,6 +16,7 @@ mod utilities;
 /// - REMKEY `key`
 /// - REMPATH `key`
 /// - LIST `key`
+/// - TRIGGER `key` `value`
 /// - GETHOOK `key`
 /// - SETHOOK `key` `link`
 /// - REMHOOK `key` `link`
