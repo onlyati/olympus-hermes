@@ -1,0 +1,11 @@
+[network]
+classic = "127.0.0.1:3030"     # Classic TCP interface bind to this address
+grpc = "127.0.0.1:3031"        # gRPC interface bind to this address
+rest = "127.0.0.1:3032"        # REST interface bind to this address
+
+[initials]
+# Records and hooks will be read from here during startup
+path = "/usr/var/hermes/init.toml"
+
+[logger]
+location = "/usr/var/hermes/log.txt" # Which file should the database log written

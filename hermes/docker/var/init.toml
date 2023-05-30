@@ -1,0 +1,15 @@
+[[hook]]
+prefix = "/root/status/hooks"
+links = ["http://127.0.0.1:9999/status-update", "http://127.0.0.1:9999/status-update-2"]
+
+[[hook]]
+prefix = "/root/agent/hooks"
+links = ["http://127.0.0.1:9999/agent-update"]
+
+[[record]]
+key = "/root/status/server1"
+value = "online"
+
+[[record]]
+key = "/root/status/server2"
+value = "offline"

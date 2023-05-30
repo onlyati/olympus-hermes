@@ -5,9 +5,9 @@ services:
     image: hermes
     container_name: hermes_test
     environment:
-      - RUST_LOG=info
+      - HERMES_LOG=info
     volumes:
       - ./var:/usr/var/hermes
-      - ./etc:/etc/hermes
+      - ./etc:/etc/olympus/hermes
     ports:
       - 3030-3032:3030-3032
