@@ -15,12 +15,8 @@ pub struct Args {
     pub hostname: String,
 
     /// Config file for connection details
-    #[arg(short, long, default_value_t = String::from("/etc/olympus/hephaestus/client.conf"))]
+    #[arg(short, long, default_value_t = String::from("/etc/olympus/hermes/client.toml"))]
     pub config: String,
-
-    /// Show more detail about connection
-    #[arg(short, long, default_value_t = false)]
-    pub verbose: bool,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -28,86 +24,86 @@ pub enum Action {
     /// Get a value of a key
     Get {
         /// Specify the name of the key
-        #[arg(long)]
+        #[arg(long, short)]
         key: String,
     },
 
     /// Set value to a key
     Set {
         /// Specify the name of the key
-        #[arg(long)]
+        #[arg(long, short)]
         key: String,
 
         /// Specify the value for the key
-        #[arg(long)]
+        #[arg(long, short)]
         value: String,
     },
 
     /// Remove specified key
     RemKey {
         /// Specify the name of the key
-        #[arg(long)]
+        #[arg(long, short)]
         key: String,
     },
 
     /// Remove path
     RemPath {
         /// Specify the name of the key
-        #[arg(long)]
+        #[arg(long, short)]
         key: String,
     },
 
     /// List keys
     ListKeys {
         /// Specify the name of the key
-        #[arg(long)]
+        #[arg(long, short)]
         key: String,
     },
 
     /// Send trigger for hooks
     Trigger {
         /// Specify the name of the key
-        #[arg(long)]
+        #[arg(long, short)]
         key: String,
 
         /// Specify the value for the key
-        #[arg(long)]
+        #[arg(long, short)]
         value: String,
     },
 
     /// Create new hook
     SetHook {
         /// Key prefix for hook sending
-        #[arg(long)]
+        #[arg(long, short)]
         prefix: String,
 
         /// Address where the hook is sent
-        #[arg(long)]
+        #[arg(long, short)]
         link: String,
     },
 
     /// Check that a hook exists
     GetHook {
         /// Key prefix for hook sending
-        #[arg(long)]
+        #[arg(long, short)]
         prefix: String,
     },
 
     /// List hooks
     ListHooks {
         /// Key prefix for hook sending
-        #[arg(long)]
+        #[arg(long, short)]
         prefix: String,
     },
 
     /// Remove existing hook
     RemHook {
-        #[arg(long)]
+        #[arg(long, short)]
         /// Key prefix for hook sending
         prefix: String,
 
         /// Address where the hook is sent
-        #[arg(long)]
+        #[arg(long, short)]
         link: String,
     },
 

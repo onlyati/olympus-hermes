@@ -3,8 +3,9 @@ FROM rust:latest as builder
 RUN apt-get update && \
     apt-get install -y protobuf-compiler
 
+WORKDIR /
 RUN cargo new --bin rust-docker
-WORKDIR ./rust-docker
+WORKDIR /rust-docker
 
 RUN rm src/*.rs
 COPY ./proto ./proto
@@ -25,20 +26,20 @@ EXPOSE 3030
 EXPOSE 3031
 EXPOSE 3032
 
-ENV RUST_LOG=info
+ENV HERMES_LOG=info
 
-COPY ./main_default.conf /etc/defaults/hermes.conf
+COPY ./config_default.toml /etc/defaults/hermes.toml
 
 COPY --from=builder /rust-docker/target/release/hermes ${APP}/hermes
 COPY --from=builder /rust-docker/target/release/cli ${APP}/cli
 
 RUN mkdir -p "/usr/var/hermes" && echo "" > /usr/var/hermes/init.dat \
     && mkdir -p "/usr/var/hermes" && echo "" > /usr/var/hermes/hook.dat \
-    && mkdir -p "/etc/hermes" && cp "/etc/defaults/hermes.conf" "/etc/hermes/main.conf"
+    && mkdir -p "/etc/olympus/hermes" && cp "/etc/defaults/hermes.toml" "/etc/olympus/hermes/config.toml"
 
 VOLUME /usr/var/hermes
-VOLUME /etc/hermes
+VOLUME /etc/olympus/hermes
 
 WORKDIR ${APP}
 
-ENTRYPOINT ./hermes /etc/hermes/main.conf
+ENTRYPOINT ./hermes /etc/olympus/hermes/config.toml

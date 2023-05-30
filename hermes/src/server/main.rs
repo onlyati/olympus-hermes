@@ -15,7 +15,7 @@ use interfaces::InterfaceHandler;
 fn main() {
     // Read RUST_LOG environment variable and set trace accordingly, default is Level::ERROR
     let subscriber = FmtSubscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(EnvFilter::from_env("HERMES_LOG"))
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set loger");
 
@@ -41,7 +41,7 @@ async fn main_async() {
         exit(1);
     }
 
-    let config = match onlyati_config::read_config(args[1].as_str()) {
+    let config = match utilities::config_parse::parse_config(&args[1]) {
         Ok(config) => config,
         Err(e) => {
             tracing::error!("Config file error: {}", e);
@@ -51,13 +51,8 @@ async fn main_async() {
 
     // Initialize HookManager and Logger for Datastore
     let (hook_sender, hook_thread) = onlyati_datastore::hook::utilities::start_hook_manager();
-    let (logger_sender, logger_thread) = match config.get("logger.location") {
-        Some(path) => onlyati_datastore::logger::utilities::start_logger(path),
-        None => {
-            tracing::error!("logger location is not defined");
-            panic!("logger location is not defined");
-        }
-    };
+    let (logger_sender, logger_thread) =
+        onlyati_datastore::logger::utilities::start_logger(&config.logger.location);
 
     // Initialize Datastore
     let (sender, db_thread) = onlyati_datastore::datastore::utilities::start_datastore(
@@ -67,8 +62,8 @@ async fn main_async() {
     );
 
     // Parse the input data for database and hooks too
-    utilities::parse_input_data("init.data", &config, &sender).unwrap_or_else(|x| panic!("{}", x));
-    utilities::parse_input_hook("hook.data", &config, &sender).unwrap_or_else(|x| panic!("{}", x));
+    utilities::initial_parse::parse_initial_file(&config.initials.path, &sender)
+        .unwrap_or_else(|x| panic!("{}", x));
     let sender = Arc::new(Mutex::new(sender));
 
     // Create interface handler
@@ -91,7 +86,7 @@ async fn main_async() {
     );
 
     // Register classic interface
-    if let Some(addr) = config.get("host.classic.address") {
+    if let Some(addr) = config.network.classic {
         handler.register_interface(
             Box::new(Classic::new(sender.clone(), addr.clone())),
             "Classic".to_string(),
@@ -99,7 +94,7 @@ async fn main_async() {
     }
 
     // Register gRPC interface
-    if let Some(addr) = config.get("host.grpc.address") {
+    if let Some(addr) = config.network.grpc {
         handler.register_interface(
             Box::new(Grpc::new(sender.clone(), addr.clone())),
             "gRPC".to_string(),
@@ -107,7 +102,7 @@ async fn main_async() {
     }
 
     // Register REST interface
-    if let Some(addr) = config.get("host.rest.address") {
+    if let Some(addr) = config.network.rest {
         handler.register_interface(
             Box::new(Rest::new(sender.clone(), addr.clone())),
             "REST".to_string(),

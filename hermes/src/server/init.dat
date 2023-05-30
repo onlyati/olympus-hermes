@@ -1,8 +1,0 @@
-/root/test1              This is         value
-/root/test2              This is another value
-/root/status/server1     online
-/root/status/server2     online
-/root/status/server3     offline
-/root/status/server4     online
-/root/status/proxy       online
-
