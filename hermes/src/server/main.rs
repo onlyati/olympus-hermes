@@ -1,5 +1,5 @@
 use std::process::exit;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 mod interfaces;
@@ -86,7 +86,7 @@ async fn main_async() {
     );
 
     // Register classic interface
-    if let Some(addr) = config.network.classic {
+    if let Some(addr) = &config.network.classic {
         handler.register_interface(
             Box::new(Classic::new(sender.clone(), addr.clone())),
             "Classic".to_string(),
@@ -94,7 +94,7 @@ async fn main_async() {
     }
 
     // Register gRPC interface
-    if let Some(addr) = config.network.grpc {
+    if let Some(addr) = &config.network.grpc {
         handler.register_interface(
             Box::new(Grpc::new(sender.clone(), addr.clone())),
             "gRPC".to_string(),
@@ -102,9 +102,11 @@ async fn main_async() {
     }
 
     // Register REST interface
-    if let Some(addr) = config.network.rest {
+    if let Some(addr) = &config.network.rest {
+        let config = config.clone();
+        let config = Arc::new(RwLock::new(config));
         handler.register_interface(
-            Box::new(Rest::new(sender.clone(), addr.clone())),
+            Box::new(Rest::new(sender.clone(), addr.clone(), config)),
             "REST".to_string(),
         )
     }

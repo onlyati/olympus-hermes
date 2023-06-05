@@ -1,6 +1,8 @@
 // External depencies
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::{mpsc::Sender, Arc, Mutex, RwLock};
 use std::thread::JoinHandle;
+
+use crate::utilities::config_parse::Config;
 
 // Internal depencies
 use super::ApplicationInterface;
@@ -14,15 +16,17 @@ pub struct Rest {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,
     thread: Option<JoinHandle<()>>,
+    config: Arc<RwLock<Config>>,
 }
 
 impl Rest {
     /// Create new interface
-    pub fn new(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) -> Self {
+    pub fn new(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String, config: Arc<RwLock<Config>>) -> Self {
         return Self {
             data_sender,
             address,
             thread: None,
+            config,
         };
     }
 }
@@ -31,13 +35,14 @@ impl ApplicationInterface for Rest {
     fn run(&mut self) {
         let data_sender = self.data_sender.clone();
         let addres = self.address.clone();
+        let cfg = self.config.clone();
         let thread = std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .unwrap();
             rt.block_on(async move {
-                utilities::run_async(data_sender, addres).await;
+                utilities::run_async(data_sender, addres, cfg).await;
             });
         });
 

@@ -1,21 +1,33 @@
-print("From lua key:", _G.key)
-print("From lua value:", _G.value)
-print("From lua param action:", _G.params["action"])
-print("From lua param file:", _G.params["file"])
+if _G.old ~= nil then
+    print("Old key: ", _G.old["key"])
+    print("Old value: ", _G.old["value"]) 
+else
+    print("No old value")
+end
+
+print("New key: ", _G.new["key"])
+print("New value: ", _G.new["value"])
+print("New parm: ", _G.new["parm"])
 
 words = {}
-for word in _G.value:gmatch("%S+") do
-    table.insert(words, word)
+if _G.old ~= nil then
+    for word in _G.old["value"]:gmatch("%S+") do
+        table.insert(words, word)
+    end
 end
 
-if _G.params["action"] == "add" then
-    table.insert(words, _G.params["file"])
+if _G.new["parm"] == "add" then
+    table.insert(words, _G.new["value"])
 end
 
-if _G.params["action"] == "remove" then
+if _G.new["parm"] == "remove" then
+    if _G.old == nil then
+        _G.new["value"] = ""
+        return
+    end
     i = 1
     while words[i] ~= nil do
-        if words[i] == _G.params["file"] then
+        if words[i] == _G.new["value"] then
             table.remove(words, i)
             break
         end
@@ -30,4 +42,4 @@ while words[i] ~= nil do
     i = i + 1
 end
 
-_G.value = result
+_G.new["value"] = result

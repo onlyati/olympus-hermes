@@ -11,12 +11,15 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::sync::mpsc::channel;
+use std::sync::RwLock;
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
 // Internal depencies
 use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction, utilities};
+
+use crate::utilities::config_parse::Config;
 
 // Import macroes
 use super::macros::{
@@ -27,6 +30,7 @@ use super::macros::{
 #[derive(Clone)]
 pub struct InjectedData {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+    config: Arc<RwLock<Config>>,
 }
 
 /// Struct is used to query the SET endpoint
@@ -54,6 +58,20 @@ pub struct DeleteParm {
 pub struct Hook {
     prefix: String,
     links: Vec<String>,
+}
+
+/// Struct is used to query the EXEC endpoints
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ExecArg {
+    key: String,
+    value: String,
+    parms: Option<String>,
+}
+
+/// Struct is used to query the EXEC endpoints
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ExecParm {
+    exec: String,
 }
 
 /// GET endpoint
@@ -292,8 +310,90 @@ async fn resume_log(State(injected): State<InjectedData>) -> impl IntoResponse {
     }
 }
 
+/// EXEC_SET
+async fn exec_set(
+    State(injected): State<InjectedData>,
+    Query(exec): Query<ExecParm>,
+    Json(arg): Json<ExecArg>,
+) -> impl IntoResponse {
+    // Get the old value of exists
+    let (tx, rx) = utilities::get_channel_for_get();
+    let get_action = DatabaseAction::Get(tx, arg.key.clone());
+
+    send_data_request!(get_action, injected.data_sender);
+
+    let old_pair = match rx.recv() {
+        Ok(response) => match response {
+            Ok(value) => match value {
+                ValueType::RecordPointer(data) => Some((arg.key.clone(), data.clone())),
+                _ => return_server_error!("Pointer must be Record but it was Table"),
+            },
+            Err(_) => None,
+        },
+        Err(e) => return_server_error!(e),
+    };
+
+    // Get config
+    let config = match injected.config.read() {
+        Ok(cfg) => match &cfg.scripts {
+            Some(scr) => match scr.execs.contains(&exec.exec) {
+                true => scr.clone(),
+                false => return_client_error!("requested script is not defined"),
+            },
+            None => return_client_error!("requested script is not defined"),
+        },
+        Err(_) => {
+            tracing::error!("RwLock for config has poisned");
+            panic!("RwLock for config has poisned");
+        }
+    };
+
+    let new_pair = (arg.key.clone(), arg.value.clone());
+
+    // // Call lua utility
+    let modified_pair =
+        match crate::utilities::lua::run(config, old_pair, new_pair, exec.exec, arg.parms).await {
+            Ok(modified_pair) => modified_pair,
+            Err(e) => return_server_error!(format!("error during script exection: {}", e)),
+        };
+
+    // Make a SET action for the modified pair
+    if modified_pair.1.is_empty() {
+        let (tx, rx) = utilities::get_channel_for_delete();
+
+        let action = DatabaseAction::DeleteKey(tx, modified_pair.0);
+        send_data_request!(action, injected.data_sender);
+
+        match rx.recv() {
+            Ok(response) => match response {
+                Ok(_) => return_ok!(),
+                Err(e) => return_client_error!(e.to_string()),
+            },
+            Err(e) => return_server_error!(e),
+        }
+    }
+    else {
+        let (tx, rx) = channel();
+        let action = DatabaseAction::Set(tx, modified_pair.0, modified_pair.1);
+        send_data_request!(action, injected.data_sender);
+
+        match rx.recv() {
+            Ok(response) => match response {
+                Ok(_) => return_ok!(),
+                Err(e) => return_client_error!(e.to_string()),
+            },
+            Err(e) => return_server_error!(e),
+        }
+    }
+    
+}
+
 /// Start the REST server
-pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) {
+pub async fn run_async(
+    data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+    address: String,
+    config: Arc<RwLock<Config>>,
+) {
     tracing::info!("REST interface on {} is starting...", address);
 
     let app = Router::new()
@@ -308,6 +408,7 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
         .route("/hook_list", get(list_hooks))
         .route("/logger/suspend", post(suspend_log))
         .route("/logger/resume", post(resume_log))
+        .route("/exec/set", post(exec_set))
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(|error: BoxError| async move {
@@ -324,7 +425,10 @@ pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address:
                 .layer(TraceLayer::new_for_http())
                 .into_inner(),
         )
-        .with_state(InjectedData { data_sender });
+        .with_state(InjectedData {
+            data_sender,
+            config,
+        });
 
     let address: SocketAddr = address.parse().expect("Unable to parse REST api address");
 

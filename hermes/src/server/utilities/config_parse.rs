@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 /// Represent a network table in initial toml file
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Network {
     pub classic: Option<String>,
     pub grpc: Option<String>,
@@ -9,19 +9,19 @@ pub struct Network {
 }
 
 /// Represent a initials table in initial toml file
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Initials {
     pub path: String,
 }
 
 /// Represent a logger table in initial toml file
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Logger {
     pub location: String,
 }
 
 /// Represent a scripts table in initial toml file
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Scripts {
     pub lib_path: Option<String>,
     pub exec_path: String,
@@ -29,7 +29,7 @@ pub struct Scripts {
 }
 
 /// Represent the whole config.toml file
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Config {
     pub network: Network,
     pub initials: Initials,
@@ -60,7 +60,10 @@ pub fn parse_config(config_path: &String) -> Result<Config, String> {
     tracing::info!("- logger.location: {}", config.logger.location);
 
     if let Some(scripts) = &mut config.scripts {
-        tracing::info!("- scripts.lib_path: {:?}", scripts.lib_path);
+        if let Some(lib_path) = &scripts.lib_path {
+            tracing::info!("- scripts.lib_path: {}", lib_path);
+            std::env::set_var("LUA_PATH", format!("{}/?.lua;;", lib_path));
+        }
         tracing::info!("- scripts.exec_path: {}", scripts.exec_path);
 
         let mut to_remove = vec![];
