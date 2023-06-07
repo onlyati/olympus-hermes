@@ -77,7 +77,18 @@ end
 
 -- If it is add then add
 if _G.new["parm"] == "add" then
-    table.insert(words, _G.new["value"])
+    found = false
+    i = 1
+    while words[i] ~= nil do
+        if words[i] == _G.new["value"] then
+            found = true
+            break
+        end
+        i = i + 1
+    end
+    if found == false then
+        table.insert(words, _G.new["value"])
+    end
 end
 
 -- If it is a remove, then find the word then remove
