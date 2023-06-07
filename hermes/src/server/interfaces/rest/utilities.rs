@@ -1,6 +1,7 @@
 // External depencies
 use axum::error_handling::HandleErrorLayer;
 use axum::BoxError;
+use axum::extract::Path;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -313,9 +314,15 @@ async fn resume_log(State(injected): State<InjectedData>) -> impl IntoResponse {
 /// EXEC_SET
 async fn exec_set(
     State(injected): State<InjectedData>,
+    Path(act_type): Path<String>,
     Query(exec): Query<ExecParm>,
     Json(arg): Json<ExecArg>,
 ) -> impl IntoResponse {
+    // Verify act_type, it can be "set" or "trigger"
+    if act_type != "set" && act_type != "trigger" {
+        return_client_error!(format!("Action type is '{}', but it can be only 'set' or 'trigger'", act_type));
+    }
+
     // Get the old value of exists
     let (tx, rx) = utilities::get_channel_for_get();
     let get_action = DatabaseAction::Get(tx, arg.key.clone());
@@ -358,34 +365,53 @@ async fn exec_set(
         };
 
     // Make a SET action for the modified pair
-    if modified_pair.1.is_empty() {
-        let (tx, rx) = utilities::get_channel_for_delete();
-
-        let action = DatabaseAction::DeleteKey(tx, modified_pair.0);
-        send_data_request!(action, injected.data_sender);
-
-        match rx.recv() {
-            Ok(response) => match response {
-                Ok(_) => return_ok!(),
-                Err(e) => return_client_error!(e.to_string()),
-            },
-            Err(e) => return_server_error!(e),
-        }
-    }
-    else {
-        let (tx, rx) = channel();
-        let action = DatabaseAction::Set(tx, modified_pair.0, modified_pair.1);
-        send_data_request!(action, injected.data_sender);
-
-        match rx.recv() {
-            Ok(response) => match response {
-                Ok(_) => return_ok!(),
-                Err(e) => return_client_error!(e.to_string()),
-            },
-            Err(e) => return_server_error!(e),
-        }
-    }
+    if act_type == "set" {
+        if modified_pair.1.is_empty() {
+            let (tx, rx) = utilities::get_channel_for_delete();
     
+            let action = DatabaseAction::DeleteKey(tx, modified_pair.0);
+            send_data_request!(action, injected.data_sender);
+    
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return_ok!(),
+                    Err(e) => return_client_error!(e.to_string()),
+                },
+                Err(e) => return_server_error!(e),
+            }
+        }
+        else {
+            let (tx, rx) = channel();
+            let action = DatabaseAction::Set(tx, modified_pair.0, modified_pair.1);
+            send_data_request!(action, injected.data_sender);
+    
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return_ok!(),
+                    Err(e) => return_client_error!(e.to_string()),
+                },
+                Err(e) => return_server_error!(e),
+            }
+        }
+    }
+    // Or a TRIGGER if this was requested
+    else if act_type == "trigger" {
+        if !modified_pair.1.is_empty() {
+            let (tx, rx) = channel();
+            let action = DatabaseAction::Trigger(tx, modified_pair.0, modified_pair.1);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return_ok!(),
+                    Err(e) => return_client_error!(e.to_string()),
+                },
+                Err(e) => return_server_error!(e),
+            }
+        }
+    }
+
+    unreachable!();
 }
 
 /// Start the REST server
@@ -408,7 +434,7 @@ pub async fn run_async(
         .route("/hook_list", get(list_hooks))
         .route("/logger/suspend", post(suspend_log))
         .route("/logger/resume", post(resume_log))
-        .route("/exec/set", post(exec_set))
+        .route("/exec/:type", post(exec_set))
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(|error: BoxError| async move {
