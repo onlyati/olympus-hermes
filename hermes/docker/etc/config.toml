@@ -14,6 +14,8 @@ location = "/usr/var/hermes/log.txt" # Which file should the database log writte
 lib_path = "/usr/var/hermes/lua/libs"
 exec_path = "/usr/var/hermes/lua"
 execs = [
-     "test.lua",
-     "work_with_words.lua"
+    "test.lua",
+    "work_with_words.lua",
+    "simple_words.lua",
+    "error_example.lua",
 ]
