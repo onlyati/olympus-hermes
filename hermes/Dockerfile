@@ -42,4 +42,4 @@ VOLUME /etc/olympus/hermes
 
 WORKDIR ${APP}
 
-ENTRYPOINT ./hermes /etc/olympus/hermes/config.toml
+CMD [ "./hermes", "/etc/olympus/hermes/config.toml" ]
