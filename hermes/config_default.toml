@@ -9,3 +9,8 @@ path = "/usr/var/hermes/init.toml"
 
 [logger]
 location = "/usr/var/hermes/log.txt" # Which file should the database log written
+
+[scripts]
+lib_path = "/usr/var/hermes/lua/libs"
+exec_path = "/usr/var/hermes/lua"
+execs = []

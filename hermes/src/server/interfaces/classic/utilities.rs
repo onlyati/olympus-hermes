@@ -1,6 +1,7 @@
 // External dependencies
 use bytes::BytesMut;
 use std::sync::mpsc::channel;
+use std::sync::RwLock;
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -11,15 +12,18 @@ use onlyati_datastore::datastore::{
     utilities,
 };
 
+use crate::utilities::config_parse::Config;
+
 // Import macros
 use super::macros::{
     return_client_error, return_ok, return_ok_with_value, return_server_error, send_data_request,
 };
 
 /// Read parameters from request then execute them
-pub fn parse_request(
+pub async fn parse_request(
     request: Vec<u8>,
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+    config: Arc<RwLock<Config>>,
 ) -> Result<Vec<u8>, String> {
     let valid_commands = vec![
         "SET",
@@ -34,6 +38,7 @@ pub fn parse_request(
         "LISTHOOKS",
         "SUSPEND",
         "RESUME",
+        "EXEC",
     ];
     let request = match String::from_utf8(request) {
         Ok(req) => req,
@@ -79,15 +84,16 @@ pub fn parse_request(
     );
 
     // Execute what the request asked then return with a reponse
-    return Ok(handle_command(command, key, value, data_sender));
+    return Ok(handle_command(command, key, value, data_sender, config).await);
 }
 
 /// Requst has been parsed and this function executes what it had to
-fn handle_command(
+async fn handle_command(
     command: String,
     key: String,
     value: String,
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+    config: Arc<RwLock<Config>>,
 ) -> Vec<u8> {
     // Key is required for all request
     if key.is_empty() {
@@ -158,7 +164,7 @@ fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
-        "TRIGGER"=> {
+        "TRIGGER" => {
             // TRIGGER without value is an error
             if value.is_empty() {
                 tracing::debug!("no value specified for SET action");
@@ -292,6 +298,7 @@ fn handle_command(
             }
         }
         "SUSPEND" => {
+            // Resume log action
             if key != "LOG" {
                 return_client_error!("Invalid command, you may wanted to write: SUSPEND LOG");
             }
@@ -309,6 +316,7 @@ fn handle_command(
             }
         }
         "RESUME" => {
+            // Suspend log action
             if key != "LOG" {
                 return_client_error!("Invalid command, you may wanted to write: SUSPEND LOG");
             }
@@ -325,16 +333,152 @@ fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
-        _ => (),
-    }
+        "EXEC" => {
+            // Execute lua script and save its output if needed
+            // EXEC_SET <key> <script> <set-or-trigger> <value>
+            if value.is_empty() {
+                tracing::debug!("only action is specified but rest should be needed");
+                return_client_error!("Script name, type and value are missing")
+            }
 
-    return_client_error!("Invalid command");
+            let mut c1st_space: usize = 0;
+            let mut c2nd_space: usize = 0;
+            let mut index: usize = 0;
+
+            for c in value.chars() {
+                if c == ' ' && c1st_space == 0 {
+                    c1st_space = index;
+                    index += 1;
+                    continue;
+                }
+                else if c == ' ' && c2nd_space == 0 {
+                    c2nd_space = index;
+                    break;
+                }
+
+                index += 1;
+            }
+
+            if c2nd_space == 0 {
+                return_client_error!("Invalid command, type is missing");
+            }
+
+            if c1st_space == 0 {
+                return_client_error!("Invalid command, script is missing");
+            }
+
+            tracing::debug!("breakpoints for split value: {} {}", c1st_space, c2nd_space);
+
+            let script = &value[..c1st_space].to_string();
+            let save = &value[c1st_space + 1..c2nd_space].to_string();
+            let real_value = &value[c2nd_space + 1..].to_string();
+
+            tracing::debug!("execute '{}' script for '{}' key as '{}'", script, key, save);
+            tracing::debug!("[{}]", real_value);
+
+            // Get the old value of exists
+            let (tx, rx) = utilities::get_channel_for_get();
+            let get_action = DatabaseAction::Get(tx, key.clone());
+
+            send_data_request!(get_action, data_sender);
+
+            let old_pair = match rx.recv() {
+                Ok(response) => match response {
+                    Ok(value) => match value {
+                        ValueType::RecordPointer(data) => Some((key.clone(), data.clone())),
+                        _ => return_server_error!("Pointer must be Record but it was Table"),
+                    },
+                    Err(_) => None,
+                },
+                Err(e) => return_server_error!(e),
+            };
+
+            // Get config
+            let config = match config.read() {
+                Ok(cfg) => match &cfg.scripts {
+                    Some(scr) => match scr.execs.contains(&script) {
+                        true => scr.clone(),
+                        false => return_client_error!("requested script is not defined"),
+                    },
+                    None => return_client_error!("requested script is not defined"),
+                },
+                Err(_) => {
+                    tracing::error!("RwLock for config has poisned");
+                    panic!("RwLock for config has poisned");
+                }
+            };
+
+            let new_pair = (key.clone(), real_value.trim().to_string());
+
+            // Call lua utility
+            let modified_pair =
+                match crate::utilities::lua::run(config, old_pair, new_pair, script.clone(), None)
+                    .await
+                {
+                    Ok(modified_pair) => modified_pair,
+                    Err(e) => return_server_error!(format!("error during script exection: {}", e)),
+                };
+
+            // Make a SET action for the modified pair
+            if save == "SET" {
+                if modified_pair.1.is_empty() {
+                    let (tx, rx) = utilities::get_channel_for_delete();
+
+                    let action = DatabaseAction::DeleteKey(tx, modified_pair.0);
+                    send_data_request!(action, data_sender);
+
+                    match rx.recv() {
+                        Ok(response) => match response {
+                            Ok(_) => return_ok!(),
+                            Err(e) => return_client_error!(e.to_string()),
+                        },
+                        Err(e) => return_server_error!(e),
+                    }
+                } else {
+                    let (tx, rx) = channel();
+                    let action = DatabaseAction::Set(tx, modified_pair.0, modified_pair.1);
+                    send_data_request!(action, data_sender);
+
+                    match rx.recv() {
+                        Ok(response) => match response {
+                            Ok(_) => return_ok!(),
+                            Err(e) => return_client_error!(e.to_string()),
+                        },
+                        Err(e) => return_server_error!(e),
+                    }
+                }
+            }
+            // Or a TRIGGER if this was requested
+            else if save == "TRIGGER" {
+                if !modified_pair.1.is_empty() {
+                    let (tx, rx) = channel();
+                    let action = DatabaseAction::Trigger(tx, modified_pair.0, modified_pair.1);
+                    send_data_request!(action, data_sender);
+
+                    match rx.recv() {
+                        Ok(response) => match response {
+                            Ok(_) => return_ok!(),
+                            Err(e) => return_client_error!(e.to_string()),
+                        },
+                        Err(e) => return_server_error!(e),
+                    }
+                } else {
+                    return_client_error!("After script was run, the new value is empty");
+                }
+            }
+            else {
+                return_client_error!("Type can be either SET or TRIGGER");
+            }
+        }
+        _ => unreachable!(),
+    }
 }
 
 /// Run Classic interface
 pub async fn run_async(
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,
+    config: Arc<RwLock<Config>>,
 ) {
     tracing::info!("classic interface on {} is starting...", address);
 
@@ -353,6 +497,7 @@ pub async fn run_async(
 
         // Spawn thread for them
         let data_sender = data_sender.clone();
+        let config = config.clone();
         tokio::spawn(async move {
             let mut request: Vec<u8> = Vec::with_capacity(4096);
 
@@ -381,7 +526,7 @@ pub async fn run_async(
             tracing::trace!("has been read {} bytes", request.len());
 
             // Handle it
-            let response = match parse_request(request, data_sender) {
+            let response = match parse_request(request, data_sender, config).await {
                 Ok(vector) => String::from_utf8(vector).unwrap(),
                 Err(e) => e,
             };

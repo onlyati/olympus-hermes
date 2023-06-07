@@ -6,7 +6,9 @@ macro_rules! send_data_request {
         };
 
         if let Err(e) = req_status {
-            tracing::error!("Error: {}", e);
+            for line in e.to_string().lines() {
+                tracing::error!("{}", line);
+            }
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
@@ -15,7 +17,9 @@ pub(in crate::interfaces::rest) use send_data_request;
 
 macro_rules! return_server_error {
     ($error:expr) => {{
-        tracing::error!("Error: {}", $error);
+        for line in $error.to_string().lines() {
+            tracing::error!("{}", line);
+        }
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }};
 }

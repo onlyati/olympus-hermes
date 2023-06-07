@@ -1,5 +1,5 @@
 use std::process::exit;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 mod interfaces;
@@ -48,6 +48,7 @@ async fn main_async() {
             exit(1);
         }
     };
+    let config_arc = Arc::new(RwLock::new(config.clone()));
 
     // Initialize HookManager and Logger for Datastore
     let (hook_sender, hook_thread) = onlyati_datastore::hook::utilities::start_hook_manager();
@@ -86,25 +87,28 @@ async fn main_async() {
     );
 
     // Register classic interface
-    if let Some(addr) = config.network.classic {
+    if let Some(addr) = &config.network.classic {
+        let config = config_arc.clone();
         handler.register_interface(
-            Box::new(Classic::new(sender.clone(), addr.clone())),
+            Box::new(Classic::new(sender.clone(), addr.clone(), config)),
             "Classic".to_string(),
         )
     }
 
     // Register gRPC interface
-    if let Some(addr) = config.network.grpc {
+    if let Some(addr) = &config.network.grpc {
+        let config = config_arc.clone();
         handler.register_interface(
-            Box::new(Grpc::new(sender.clone(), addr.clone())),
+            Box::new(Grpc::new(sender.clone(), addr.clone(), config)),
             "gRPC".to_string(),
         )
     }
 
     // Register REST interface
-    if let Some(addr) = config.network.rest {
+    if let Some(addr) = &config.network.rest {
+        let config = config_arc.clone();
         handler.register_interface(
-            Box::new(Rest::new(sender.clone(), addr.clone())),
+            Box::new(Rest::new(sender.clone(), addr.clone(), config)),
             "REST".to_string(),
         )
     }

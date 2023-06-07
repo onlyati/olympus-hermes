@@ -9,3 +9,13 @@ path = "/home/ati/work/OnlyAti.Hermes/hermes/init_data.toml"
 
 [logger]
 location = "/tmp/hermes-datastore-test.txt" # Which file should the database log written
+
+[scripts]
+lib_path = "./lua-examples/libs"
+exec_path = "./lua-examples"
+execs = [
+    "test.lua",
+    "work_with_words.lua",
+    "simple_words.lua",
+    "error_example.lua",
+]

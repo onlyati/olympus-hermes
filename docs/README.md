@@ -4,6 +4,7 @@ Document has three major parts, they are discussing:
 - [Actions](Actions.md)
 - [Configuration](Configuration.md)
 - [Command link interface](CommandLine.md)
+- [Stored procedures](Stored_procedures.md)
 
 Following documents describes each interface parameters:
 - [Classic TCP interface](Interface_classic.md)

@@ -1,6 +1,7 @@
 // External depencies
 use axum::error_handling::HandleErrorLayer;
 use reqwest::StatusCode;
+use std::sync::RwLock;
 use std::sync::{mpsc::channel, mpsc::Sender, Arc, Mutex};
 use tonic::{transport::Server, Request, Response, Status};
 use tower::{BoxError, ServiceBuilder};
@@ -8,8 +9,10 @@ use tower_http::trace::TraceLayer;
 
 // Internal depencies
 use hermes::hermes_server::{Hermes, HermesServer};
-use hermes::{Empty, Hook, HookCollection, Key, KeyList, LinkCollection, Pair};
+use hermes::{Empty, ExecArg, Hook, HookCollection, Key, KeyList, LinkCollection, Pair};
 use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction, utilities};
+
+use crate::utilities::config_parse::Config;
 
 // Import macros
 use super::macros::{
@@ -26,6 +29,7 @@ mod hermes {
 #[derive(Debug, Default)]
 struct HermesGrpc {
     data_sender: Option<Arc<Mutex<Sender<DatabaseAction>>>>,
+    config: Arc<RwLock<Config>>,
 }
 
 /// gRPC endpoints
@@ -276,12 +280,118 @@ impl Hermes for HermesGrpc {
             Err(e) => return_server_error!(e),
         }
     }
+
+    /// Execute lua script and save the value
+    async fn exec_script(&self, request: Request<ExecArg>) -> Result<Response<Empty>, Status> {
+        let request = request.into_inner();
+        let data_sender = check_self_sender!(&self.data_sender);
+
+        // Get the old value of exists
+        let (tx, rx) = utilities::get_channel_for_get();
+        let get_action = DatabaseAction::Get(tx, request.key.clone());
+
+        send_data_request!(get_action, data_sender);
+
+        let old_pair = match rx.recv() {
+            Ok(response) => match response {
+                Ok(value) => match value {
+                    ValueType::RecordPointer(data) => Some((request.key.clone(), data.clone())),
+                    _ => return_server_error!("Pointer must be Record but it was Table"),
+                },
+                Err(_) => None,
+            },
+            Err(e) => return_server_error!(e),
+        };
+
+        // Get config
+        let config = match &self.config.read() {
+            Ok(cfg) => match &cfg.scripts {
+                Some(scr) => match scr.execs.contains(&request.exec) {
+                    true => scr.clone(),
+                    false => return_client_error!("requested script is not defined"),
+                },
+                None => return_client_error!("requested script is not defined"),
+            },
+            Err(_) => {
+                tracing::error!("RwLock for config has poisned");
+                panic!("RwLock for config has poisned");
+            }
+        };
+
+        let new_pair = (request.key.clone(), request.value.clone());
+
+        let parms = match !request.parms.is_empty() {
+            true => Some(request.parms.clone()),
+            false => None,
+        };
+
+        // // Call lua utility
+        let modified_pair =
+            match crate::utilities::lua::run(config, old_pair, new_pair, request.exec, parms).await
+            {
+                Ok(modified_pair) => modified_pair,
+                Err(e) => return_server_error!(format!("error during script exection: {}", e)),
+            };
+
+        // Make a SET action for the modified pair
+        if request.save == true {
+            if modified_pair.1.is_empty() {
+                let (tx, rx) = utilities::get_channel_for_delete();
+
+                let action = DatabaseAction::DeleteKey(tx, modified_pair.0);
+                send_data_request!(action, data_sender);
+
+                match rx.recv() {
+                    Ok(response) => match response {
+                        Ok(_) => return_ok_with_value!(Empty::default()),
+                        Err(e) => return_client_error!(e.to_string()),
+                    },
+                    Err(e) => return_server_error!(e),
+                }
+            } else {
+                let (tx, rx) = channel();
+                let action = DatabaseAction::Set(tx, modified_pair.0, modified_pair.1);
+                send_data_request!(action, data_sender);
+
+                match rx.recv() {
+                    Ok(response) => match response {
+                        Ok(_) => return_ok_with_value!(Empty::default()),
+                        Err(e) => return_client_error!(e.to_string()),
+                    },
+                    Err(e) => return_server_error!(e),
+                }
+            }
+        }
+        // Or a TRIGGER if this was requested
+        else {
+            if !modified_pair.1.is_empty() {
+                let (tx, rx) = channel();
+                let action = DatabaseAction::Trigger(tx, modified_pair.0, modified_pair.1);
+                send_data_request!(action, data_sender);
+
+                match rx.recv() {
+                    Ok(response) => match response {
+                        Ok(_) => return_ok_with_value!(Empty::default()),
+                        Err(e) => return_client_error!(e.to_string()),
+                    },
+                    Err(e) => return_server_error!(e),
+                }
+            } else {
+                return_client_error!("After script was run, the new value is empty");
+            }
+        }
+    }
 }
 
 /// Start gRPC server
-pub async fn run_async(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String) {
+pub async fn run_async(
+    data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+    address: String,
+    config: Arc<RwLock<Config>>,
+) {
     let mut hermes_grpc = HermesGrpc::default();
     hermes_grpc.data_sender = Some(data_sender);
+    hermes_grpc.config = config;
     let hermes_service = HermesServer::new(hermes_grpc);
 
     tracing::info!("gRPC interface on {} is starting...", address);

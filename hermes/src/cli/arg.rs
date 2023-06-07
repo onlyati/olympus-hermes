@@ -112,6 +112,29 @@ pub enum Action {
 
     /// Resule file writing for database log
     ResumeLog,
+
+    /// Execute lua script
+    Exec {
+        /// Specify the name of the key
+        #[arg(long, short)]
+        key: String,
+
+        /// Specify the value for the key
+        #[arg(long, short)]
+        value: String,
+
+        /// Specify name of the script
+        #[arg(long, short)]
+        script: String,
+
+        /// Specify parameter that will be passed to script
+        #[arg(long, short)]
+        parms: Option<String>,
+
+        /// Final value should be written or it is just a trigger event
+        #[arg(long)]
+        save: bool,
+    }
 }
 
 fn check_hostname(s: &str) -> Result<String, String> {
