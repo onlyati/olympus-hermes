@@ -39,7 +39,7 @@ cd olympus-hermes/hermes
 cargo build --release
 ```
 
-After it, executable server binary (`target/release/hermes`) and cli (`target/release/cli`) are built. You can start server by `hermes <path-to-config>` command. Sample config file can be found in `main_default.conf` file.
+After it, executable server binary (`target/release/hermes`) and cli (`target/release/cli`) are built. You can start server by `hermes <path-to-config>` command. Sample config file can be found in [config_default.toml](hermes/config_default.toml) file.
 
 ## Install via docker
 
