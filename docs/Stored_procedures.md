@@ -26,16 +26,17 @@ Hermes support to run Lua scripts before set or trigger actions. Lua scripts rec
 
 Imagine the following scenario:
 - There is an API that using Hermes as cache
-- This API has 2 running instance
+- This API has 2 running instances
 - API receives ticket numbers and it save it as a list into one record
 
 This would be the normal sequence:
 1. API#1 check value of /root/ticket/open
-1. It is empty, so create a new pair with "214" vclue
+1. It is empty, so API#1 create a new pair with "214" vclue
 1. API#2 check value of /root/ticket/open and receive "214"
-1. Add new ticket and save value, so new value if "214 216"
+1. API#2 add new ticket and save value, so new value if "214 216"
 
-Although, Hermes update only one pair at the time, but it is not guaranteed what is the connection sequence. In the example above, GET and SET are 2 different call and they can mix like:
+Although, Hermes update only one pair at the time, but sequence of incoming connections cannot be not determernined.
+Due to GET and SET are two different calls, then following situation may happen:
 1. API#1 check value of /root/ticket/open and receive "214 216"
 1. API#2 check value of /root/ticket/open and receive "214 216"
 1. API#1 add new ticket and save value, so new value if "214 216 217"
@@ -45,7 +46,7 @@ At the end, one value ("217") has been lost.
 
 ### Setup Hermes
 
-In the `config.toml` file, append the following lines:
+In the `config.toml` file, there are the following lines:
 ```t
 [scripts]
 lib_path = "/usr/var/hermes/lua/libs"
@@ -59,7 +60,12 @@ execs = [
 
 ```
 
-Following script is created as `/usr/var/hermes/lua/work_with_words.lua`. Not requires to be an executable file:
+Meaning of configuration:
+1. `/usr/var/hermes/lua/libs` is set as LUA_PATH environment variable within Hermes
+1. Hermes looking for scripts in `/usr/var/hermes/lua/libs` directory
+1. Parameter, called `execs`, string list tell which scripts can be called. This list cannot be modified without Hermes restart.
+
+Following script is created as `/usr/var/hermes/lua/work_with_words.lua`. Not requires to be an executable file.
 ```lua
 -- Do not modify if parm is empty
 if _G.new["parm"] == nil then
@@ -124,24 +130,24 @@ _G.new["value"] = result
 Then we can call it, for example via CLI:
 ```bash
 # There is no --save at the end, so it is just a trigger
-$ cli -H cfg://test -c ./client_config.toml exec -k /root/ticket/open -v 124 --script work_with_words.lua --parms add
-$ cli -H cfg://test -c ./client_config.toml get -k /root/ticket/open
+$ cli -H http://127.0.0.1:3031 exec -k /root/ticket/open -v 124 --script work_with_words.lua --parms add
+$ cli -H http://127.0.0.1:3031 get -k /root/ticket/open
 Failed request: Invalid key: Specified key does not exist
 
 # Add some ticket
-$ cli -H cfg://test -c ./client_config.toml exec -k /root/ticket/open -v 124 --script work_with_words.lua --parms add --save
-$ cli -H cfg://test -c ./client_config.toml get -k /root/ticket/open
+$ cli -H http://127.0.0.1:3031 exec -k /root/ticket/open -v 124 --script work_with_words.lua --parms add --save
+$ cli -H http://127.0.0.1:3031 get -k /root/ticket/open
 124
-$ cli -H cfg://test -c ./client_config.toml exec -k /root/ticket/open -v 126 --script work_with_words.lua --parms add --save
-$ cli -H cfg://test -c ./client_config.toml get -k /root/ticket/open
+$ cli -H http://127.0.0.1:3031 exec -k /root/ticket/open -v 126 --script work_with_words.lua --parms add --save
+$ cli -H http://127.0.0.1:3031 get -k /root/ticket/open
 124 126
-$ cli -H cfg://test -c ./client_config.toml exec -k /root/ticket/open -v 318 --script work_with_words.lua --parms add --save
-$ cli -H cfg://test -c ./client_config.toml get -k /root/ticket/open
+$ cli -H http://127.0.0.1:3031 exec -k /root/ticket/open -v 318 --script work_with_words.lua --parms add --save
+$ cli -H http://127.0.0.1:3031 get -k /root/ticket/open
 124 126 318
 
 # One has been resolved, delete it
-$ cli -H cfg://test -c ./client_config.toml exec -k /root/ticket/open -v 126 --script work_with_words.lua --parms remove --save
-$ cli -H cfg://test -c ./client_config.toml get -k /root/ticket/open
+$ cli -H http://127.0.0.1:3031 exec -k /root/ticket/open -v 126 --script work_with_words.lua --parms remove --save
+$ cli -H http://127.0.0.1:3031 get -k /root/ticket/open
 124 318
 ```
 
@@ -236,7 +242,7 @@ asd = require "dumma"
 
 And call it:
 ```bash
-$ cli -H cfg://test -c ./client_config.toml exec -k /root/ticket/open -v 133 --script error_example.lua
+$ cli -H http://127.0.0.1:3031 exec -k /root/ticket/open -v 133 --script error_example.lua
 Failed request: Internal server error
 ```
 
