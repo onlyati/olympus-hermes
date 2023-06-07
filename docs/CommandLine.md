@@ -18,6 +18,7 @@ Commands:
   rem-hook     Remove existing hook
   suspend-log  Suspend file writing for database log
   resume-log   Resule file writing for database log
+  exec         Execute lua script
   help         Print this message or the help of the given subcommand(s)
 
 Options:
