@@ -1,3 +1,5 @@
+word = require "words"
+
 -- Do not modify if parm is empty
 if _G.new["parm"] == nil then
     _G.new["value"] = _G.old["value"]
@@ -7,23 +9,13 @@ end
 -- Split value for words
 words = {}
 if _G.old ~= nil then
-    for word in _G.old["value"]:gmatch("%S+") do
-        table.insert(words, word)
-    end
+    words = word.split(_G.old["value"])
 end
 
 -- If it is add then add
 if _G.new["parm"] == "add" then
-    found = false
-    i = 1
-    while words[i] ~= nil do
-        if words[i] == _G.new["value"] then
-            found = true
-            break
-        end
-        i = i + 1
-    end
-    if found == false then
+    found = word.found(words, _G.new["value"])
+    if found == 0 then
         table.insert(words, _G.new["value"])
     end
 end
@@ -34,13 +26,9 @@ if _G.new["parm"] == "remove" then
         _G.new["value"] = ""
         return
     end
-    i = 1
-    while words[i] ~= nil do
-        if words[i] == _G.new["value"] then
-            table.remove(words, i)
-            break
-        end
-        i = i + 1
+    i = word.found(words, _G.new["value"])
+    if i > 0 then
+        table.remove(words, i)
     end
 end
 

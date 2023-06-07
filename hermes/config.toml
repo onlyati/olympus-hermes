@@ -16,4 +16,6 @@ exec_path = "./lua-examples"
 execs = [
     "test.lua",
     "work_with_words.lua",
+    "simple_words.lua",
+    "error_example.lua",
 ]

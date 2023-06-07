@@ -1,4 +1,3 @@
--- asd = require "dumma"
 data = require "dummy"
 
 str_index = _G.new["value"]
