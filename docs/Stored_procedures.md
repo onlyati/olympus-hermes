@@ -35,12 +35,12 @@ This would be the normal sequence:
 1. API#2 check value of /root/ticket/open and receive "214"
 1. API#2 add new ticket and save value, so new value if "214 216"
 
-Although, Hermes update only one pair at the time, but sequence of incoming connections cannot be not determernined.
+Although, Hermes updates only one pair at the time, but sequence of incoming connections cannot be not determernined.
 Due to GET and SET are two different calls, then following situation may happen:
 1. API#1 check value of /root/ticket/open and receive "214 216"
 1. API#2 check value of /root/ticket/open and receive "214 216"
 1. API#1 add new ticket and save value, so new value if "214 216 217"
-1. API#1 add new ticket and save value, so new value if "214 216 218"
+1. API#2 add new ticket and save value, so new value if "214 216 218"
 
 At the end, one value ("217") has been lost.
 
@@ -62,7 +62,7 @@ execs = [
 
 Meaning of configuration:
 1. `/usr/var/hermes/lua/libs` is set as LUA_PATH environment variable within Hermes
-1. Hermes looking for scripts in `/usr/var/hermes/lua/libs` directory
+1. Hermes looking for scripts in `/usr/var/hermes/lua` directory
 1. Parameter, called `execs`, string list tell which scripts can be called. This list cannot be modified without Hermes restart.
 
 Following script is created as `/usr/var/hermes/lua/work_with_words.lua`. Not requires to be an executable file.
