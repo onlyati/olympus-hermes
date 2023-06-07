@@ -1,6 +1,9 @@
+use std::sync::RwLock;
 // External dependencies
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use std::thread::JoinHandle;
+
+use crate::utilities::config_parse::Config;
 
 // Internal dependecies
 use super::ApplicationInterface;
@@ -23,10 +26,12 @@ mod utilities;
 /// - LISTHOOK `key`
 /// - SUSPEND LOG
 /// - RESUME LOG
+/// - EXEC `key` `script` `set or trigger` `value`
 pub struct Classic {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,
     thread: Option<JoinHandle<()>>,
+    config: Arc<RwLock<Config>>,
 }
 
 impl Classic {
@@ -34,11 +39,13 @@ impl Classic {
     pub fn new(
         data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
         address: String,
+        config: Arc<RwLock<Config>>,
     ) -> Self {
         return Self {
             data_sender,
             address,
             thread: None,
+            config,
         };
     }
 }
@@ -48,6 +55,7 @@ impl ApplicationInterface for Classic {
     fn run(&mut self) {
         let data_sender = self.data_sender.clone();
         let addres = self.address.clone();
+        let config = self.config.clone();
         let thread = std::thread::spawn(move || {
             tracing::trace!("allocate new multi threaded runtime to classic interface");
             let rt = tokio::runtime::Builder::new_multi_thread()
@@ -56,7 +64,7 @@ impl ApplicationInterface for Classic {
                 .unwrap();
             rt.block_on(async move {
                 tracing::trace!("Start classic interface");
-                utilities::run_async(data_sender, addres).await;
+                utilities::run_async(data_sender, addres, config).await;
             });
         });
 

@@ -1,3 +1,8 @@
-data = require "dumma"
+-- asd = require "dumma"
+data = require "dummy"
 
-_G.new["value"] = data[2]
+str_index = _G.new["value"]
+print(index)
+index = tonumber(str_index)
+print(index)
+_G.new["value"] = data[index]

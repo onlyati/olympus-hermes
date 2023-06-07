@@ -21,7 +21,11 @@ pub struct Rest {
 
 impl Rest {
     /// Create new interface
-    pub fn new(data_sender: Arc<Mutex<Sender<DatabaseAction>>>, address: String, config: Arc<RwLock<Config>>) -> Self {
+    pub fn new(
+        data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+        address: String,
+        config: Arc<RwLock<Config>>,
+    ) -> Self {
         return Self {
             data_sender,
             address,

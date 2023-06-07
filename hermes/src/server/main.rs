@@ -88,8 +88,9 @@ async fn main_async() {
 
     // Register classic interface
     if let Some(addr) = &config.network.classic {
+        let config = config_arc.clone();
         handler.register_interface(
-            Box::new(Classic::new(sender.clone(), addr.clone())),
+            Box::new(Classic::new(sender.clone(), addr.clone(), config)),
             "Classic".to_string(),
         )
     }
