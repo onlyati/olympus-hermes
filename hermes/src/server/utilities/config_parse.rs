@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 /// Represent a network table in initial toml file
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug, Default)]
 pub struct Network {
     pub classic: Option<String>,
     pub grpc: Option<String>,
@@ -9,19 +9,19 @@ pub struct Network {
 }
 
 /// Represent a initials table in initial toml file
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug, Default)]
 pub struct Initials {
     pub path: String,
 }
 
 /// Represent a logger table in initial toml file
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug, Default)]
 pub struct Logger {
     pub location: String,
 }
 
 /// Represent a scripts table in initial toml file
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug, Default)]
 pub struct Scripts {
     pub lib_path: Option<String>,
     pub exec_path: String,
@@ -29,7 +29,7 @@ pub struct Scripts {
 }
 
 /// Represent the whole config.toml file
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug, Default)]
 pub struct Config {
     pub network: Network,
     pub initials: Initials,

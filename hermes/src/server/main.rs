@@ -48,6 +48,7 @@ async fn main_async() {
             exit(1);
         }
     };
+    let config_arc = Arc::new(RwLock::new(config.clone()));
 
     // Initialize HookManager and Logger for Datastore
     let (hook_sender, hook_thread) = onlyati_datastore::hook::utilities::start_hook_manager();
@@ -95,16 +96,16 @@ async fn main_async() {
 
     // Register gRPC interface
     if let Some(addr) = &config.network.grpc {
+        let config = config_arc.clone();
         handler.register_interface(
-            Box::new(Grpc::new(sender.clone(), addr.clone())),
+            Box::new(Grpc::new(sender.clone(), addr.clone(), config)),
             "gRPC".to_string(),
         )
     }
 
     // Register REST interface
     if let Some(addr) = &config.network.rest {
-        let config = config.clone();
-        let config = Arc::new(RwLock::new(config));
+        let config = config_arc.clone();
         handler.register_interface(
             Box::new(Rest::new(sender.clone(), addr.clone(), config)),
             "REST".to_string(),

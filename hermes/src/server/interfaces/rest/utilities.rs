@@ -1,7 +1,6 @@
 // External depencies
 use axum::error_handling::HandleErrorLayer;
 use axum::BoxError;
-use axum::extract::Path;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -73,6 +72,7 @@ pub struct ExecArg {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ExecParm {
     exec: String,
+    save: bool,
 }
 
 /// GET endpoint
@@ -312,17 +312,11 @@ async fn resume_log(State(injected): State<InjectedData>) -> impl IntoResponse {
 }
 
 /// EXEC_SET
-async fn exec_set(
+async fn exec_script(
     State(injected): State<InjectedData>,
-    Path(act_type): Path<String>,
     Query(exec): Query<ExecParm>,
     Json(arg): Json<ExecArg>,
 ) -> impl IntoResponse {
-    // Verify act_type, it can be "set" or "trigger"
-    if act_type != "set" && act_type != "trigger" {
-        return_client_error!(format!("Action type is '{}', but it can be only 'set' or 'trigger'", act_type));
-    }
-
     // Get the old value of exists
     let (tx, rx) = utilities::get_channel_for_get();
     let get_action = DatabaseAction::Get(tx, arg.key.clone());
@@ -357,7 +351,7 @@ async fn exec_set(
 
     let new_pair = (arg.key.clone(), arg.value.clone());
 
-    // // Call lua utility
+    // Call lua utility
     let modified_pair =
         match crate::utilities::lua::run(config, old_pair, new_pair, exec.exec, arg.parms).await {
             Ok(modified_pair) => modified_pair,
@@ -365,13 +359,13 @@ async fn exec_set(
         };
 
     // Make a SET action for the modified pair
-    if act_type == "set" {
+    if exec.save {
         if modified_pair.1.is_empty() {
             let (tx, rx) = utilities::get_channel_for_delete();
-    
+
             let action = DatabaseAction::DeleteKey(tx, modified_pair.0);
             send_data_request!(action, injected.data_sender);
-    
+
             match rx.recv() {
                 Ok(response) => match response {
                     Ok(_) => return_ok!(),
@@ -379,12 +373,11 @@ async fn exec_set(
                 },
                 Err(e) => return_server_error!(e),
             }
-        }
-        else {
+        } else {
             let (tx, rx) = channel();
             let action = DatabaseAction::Set(tx, modified_pair.0, modified_pair.1);
             send_data_request!(action, injected.data_sender);
-    
+
             match rx.recv() {
                 Ok(response) => match response {
                     Ok(_) => return_ok!(),
@@ -395,7 +388,7 @@ async fn exec_set(
         }
     }
     // Or a TRIGGER if this was requested
-    else if act_type == "trigger" {
+    else {
         if !modified_pair.1.is_empty() {
             let (tx, rx) = channel();
             let action = DatabaseAction::Trigger(tx, modified_pair.0, modified_pair.1);
@@ -408,10 +401,10 @@ async fn exec_set(
                 },
                 Err(e) => return_server_error!(e),
             }
+        } else {
+            return_client_error!("After script was run, the new value is empty");
         }
     }
-
-    unreachable!();
 }
 
 /// Start the REST server
@@ -434,7 +427,7 @@ pub async fn run_async(
         .route("/hook_list", get(list_hooks))
         .route("/logger/suspend", post(suspend_log))
         .route("/logger/resume", post(resume_log))
-        .route("/exec/:type", post(exec_set))
+        .route("/exec", post(exec_script))
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(|error: BoxError| async move {

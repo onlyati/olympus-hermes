@@ -17,6 +17,7 @@ service Hermes {
     rpc ListHooks (Key) returns (HookCollection);
     rpc SuspendLog (Empty) returns (Empty);
     rpc ResumeLog (Empty) returns (Empty);
+    rpc ExecScript (ExecArg) returns (Empty);
 }
 
 message Key {
@@ -45,4 +46,12 @@ message Hook {
 
 message HookCollection {
     repeated Hook hooks = 1;
+}
+
+message ExecArg {
+    string key = 1;
+    string value = 2;
+    string exec = 3;
+    string parms = 4;
+    bool save = 5;
 }
