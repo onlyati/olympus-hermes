@@ -320,7 +320,7 @@ impl Hermes for HermesGrpc {
 
         let new_pair = (request.key.clone(), request.value.clone());
 
-        let parms = match request.parms.is_empty() {
+        let parms = match !request.parms.is_empty() {
             true => Some(request.parms.clone()),
             false => None,
         };

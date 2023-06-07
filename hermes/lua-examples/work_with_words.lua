@@ -1,13 +1,7 @@
-if _G.old ~= nil then
-    print("Old key: ", _G.old["key"])
-    print("Old value: ", _G.old["value"]) 
-else
-    print("No old value")
+if _G.new["parm"] == nil then
+    _G.new["value"] = _G.old["value"]
+    return
 end
-
-print("New key: ", _G.new["key"])
-print("New value: ", _G.new["value"])
-print("New parm: ", _G.new["parm"])
 
 words = {}
 if _G.old ~= nil then

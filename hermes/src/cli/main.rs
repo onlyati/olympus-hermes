@@ -1,7 +1,7 @@
 // External dependencies
 use clap::Parser;
 use hermes::hermes_client::HermesClient;
-use hermes::{Empty, Hook, HookCollection, Key, KeyList, Pair};
+use hermes::{Empty, Hook, HookCollection, Key, KeyList, Pair, ExecArg};
 use std::process::exit;
 use tonic::transport::Channel;
 use tonic::{Request, Response, Status};
@@ -182,6 +182,7 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                 final_rc = 4;
             }
         }
+        // REMHOOK action
         Action::RemHook { prefix, link } => {
             let response: Result<Response<Empty>, Status> = grpc_client
                 .delete_hook(Request::new(Pair {
@@ -195,6 +196,7 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                 final_rc = 4;
             }
         }
+        // LISTHOOK action
         Action::ListHooks { prefix } => {
             let response: Result<Response<HookCollection>, Status> = grpc_client
                 .list_hooks(Request::new(Key {
@@ -229,6 +231,7 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                 }
             }
         }
+        // SUSPEND LOG action
         Action::SuspendLog => {
             let response: Result<Response<Empty>, Status> =
                 grpc_client.suspend_log(Request::new(Empty {})).await;
@@ -238,9 +241,31 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
                 final_rc = 4;
             }
         }
+        // RESUME LOG action
         Action::ResumeLog => {
             let response: Result<Response<Empty>, Status> =
                 grpc_client.resume_log(Request::new(Empty {})).await;
+
+            if let Err(e) = response {
+                eprintln!("Failed request: {}", e.message());
+                final_rc = 4;
+            }
+        }
+        // Execute script
+        Action::Exec { key, value, script, parms, save } => {
+            let empty = String::new();
+            let parms = match parms {
+                Some(parms) => parms,
+                None => &empty,
+            };
+
+            let response: Result<Response<Empty>, Status> = grpc_client.exec_script(Request::new(ExecArg {
+                key: key.clone(),
+                value: value.clone(),
+                exec: script.clone(),
+                parms: parms.clone(),
+                save: save.clone(),
+            })).await;
 
             if let Err(e) = response {
                 eprintln!("Failed request: {}", e.message());
