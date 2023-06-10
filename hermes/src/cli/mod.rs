@@ -262,6 +262,37 @@ pub async fn main_async(args: CliArgs) -> Result<i32, Box<dyn std::error::Error>
                 final_rc = 4;
             }
         }
+        // POP action
+        Action::Pop { key } => {
+            let response: Result<Response<Pair>, Status> = grpc_client
+                .pop(Request::new(Key { key: key.clone() }))
+                .await;
+
+            match response {
+                Ok(resp) => {
+                    let resp = resp.into_inner();
+                    println!("{}", resp.value);
+                }
+                Err(e) => {
+                    eprintln!("Failed request: {}", e.message());
+                    final_rc = 4;
+                }
+            }
+        }
+        // PUSH action
+        Action::Push { key, value } => {
+            let response: Result<Response<Empty>, Status> = grpc_client
+                .push(Request::new(Pair {
+                    key: key.clone(),
+                    value: value.clone(),
+                }))
+                .await;
+
+            if let Err(e) = response {
+                eprintln!("Failed request: {}", e.message());
+                final_rc = 4;
+            }
+        }
     }
 
     let elapsed = start.elapsed();

@@ -27,6 +27,8 @@ mod utilities;
 /// - SUSPEND LOG
 /// - RESUME LOG
 /// - EXEC `key` `script` `set or trigger` `value`
+/// - PUSH `key` `value`
+/// - POP `key`
 pub struct Classic {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,
