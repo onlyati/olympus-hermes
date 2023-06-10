@@ -32,7 +32,11 @@ curl "127.0.0.1:3032/db?key=/root/status"
 
 For more details, check the [docs](docs/README.md).
 
-## Install manually
+## Docker install
+
+Easiest way to install Hermes is using docker, pull the image by `docker pull onlyati/hermes` and based on [docker-compose](../hermes/docker/docker-compose.yaml) it can be started easily.
+
+## Build yourself manually
 
 To install you need to have Rust package installed installed with 1.68 minimal version. You also have to have protobuf-compiler package installed.
 Then you have to perform the following steps:
@@ -45,7 +49,7 @@ cargo build --release
 
 After it, executable binary (`target/release/hermes`) is built. You can start server by `hermes server -c <path-to-config>` command. Sample config file can be found in [config_default.toml](hermes/config_default.toml) file.
 
-## Install via docker
+## Build yourself with Docker
 
 Dockerfile and docker-compose file are prepare. It is also possible to build hermes with docker file:
 ```bash

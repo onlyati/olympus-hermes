@@ -28,6 +28,10 @@ Log levels:
 - warn
 - error
 
+## Docker install
+
+Easiest way to install Hermes is using docker, pull the image by `docker pull onlyati/hermes` and based on [docker-compose](../hermes/docker/docker-compose.yaml) it can be started easily.
+
 ## Build and use Hermes on your own
 
 Hermes is only one binary file. It does not need extra library to run or installing additional CLI utilities. Hermes's binary is called `hermes`.
