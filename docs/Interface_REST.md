@@ -16,4 +16,6 @@ Hermes can host a REST API, by default on 3032 port. Following endpoints are def
 | Suspend log        | /logger/suspend | POST   | None                                                 | Empty                                       |
 | Resume log         | /logger/resume  | POST   | None                                                 | Empty                                       |
 | Execute script     | /exec           | POST   | In URI: exec=_exec_&save=_bool_                      | Empty                                       |
+| Push queue         | /queue          | GET    | In URI: key=_key_                                    | Json string                                 |
+| Pop queue          | /queue          | POST   | Json body: { "key" : _"key"_, "value" : _"value"_ }  | Empty                                       |
 

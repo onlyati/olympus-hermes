@@ -412,6 +412,47 @@ pub async fn health_check() -> impl IntoResponse {
     return_ok!();
 }
 
+/// Push string into queue
+async fn push(
+    State(injected): State<InjectedData>,
+    Json(pair): Json<Pair>,
+) -> impl IntoResponse {
+    let (tx, rx) = channel();
+    let set_action = DatabaseAction::Push(tx, pair.key.clone(), pair.value.clone());
+
+    send_data_request!(set_action, injected.data_sender);
+
+    match rx.recv() {
+        Ok(response) => match response {
+            Ok(_) => return_ok!(),
+            Err(e) => return_client_error!(e.to_string()),
+        },
+        Err(e) => return_server_error!(e),
+    }
+}
+
+/// Pop from queue
+async fn pop(
+    State(injected): State<InjectedData>,
+    Query(parms): Query<KeyParm>,
+) -> impl IntoResponse {
+    let (tx, rx) = channel();
+    let get_action = DatabaseAction::Pop(tx, parms.key);
+
+    send_data_request!(get_action, injected.data_sender);
+
+    match rx.recv() {
+        Ok(response) => match response {
+            Ok(value) => match value {
+                ValueType::RecordPointer(data) => return_ok_with_value!(data),
+                _ => return_server_error!("Pointer must be Record but it was Table"),
+            },
+            Err(e) => return_client_error!(e.to_string()),
+        },
+        Err(e) => return_server_error!(e),
+    }
+}
+
 /// Start the REST server
 pub async fn run_async(
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
@@ -434,6 +475,8 @@ pub async fn run_async(
         .route("/logger/resume", post(resume_log))
         .route("/exec", post(exec_script))
         .route("/hc", get(health_check))
+        .route("/queue", post(push))
+        .route("/queue", get(pop))
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(|error: BoxError| async move {
