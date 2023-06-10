@@ -2,7 +2,7 @@
 
 ## Actions and interfaces
 
-Document has three major parts, they are discussing:
+Document has some major parts, they are discussing:
 - [Actions](Actions.md)
 - [Configuration](Configuration.md)
 - [Command link interface](CommandLine.md)
