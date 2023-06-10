@@ -5,7 +5,7 @@ use std::thread::JoinHandle;
 
 // Internal dependencies
 use super::ApplicationInterface;
-use crate::utilities::config_parse::Config;
+use crate::server::utilities::config_parse::Config;
 use onlyati_datastore::datastore::enums::DatabaseAction;
 
 mod macros;

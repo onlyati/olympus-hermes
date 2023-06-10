@@ -7,11 +7,7 @@ edition = "2021"
 
 [[bin]]
 name = "hermes"
-path = "src/server/main.rs"
-
-[[bin]]
-name = "cli"
-path = "src/cli/main.rs"
+path = "src/main.rs"
 
 [dependencies]
 chrono = "0.4.24"

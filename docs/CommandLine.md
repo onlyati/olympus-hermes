@@ -2,8 +2,9 @@
 
 CLI is built in the project. It connect to the gRPC interface and using that. The `--help` or `-h` parameter explain what the CLI can do. Overview:
 ```
-cli --help
-Usage: cli [OPTIONS] --hostname <HOSTNAME> <COMMAND>
+Use Hermes CLI mode
+
+Usage: hermes cli [OPTIONS] --hostname <HOSTNAME> <COMMAND>
 
 Commands:
   get          Get a value of a key

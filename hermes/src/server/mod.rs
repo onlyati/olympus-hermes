@@ -1,6 +1,4 @@
-use std::process::exit;
 use std::sync::{Arc, Mutex, RwLock};
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 mod interfaces;
 mod utilities;
@@ -12,40 +10,19 @@ use interfaces::rest::Rest;
 use interfaces::ApplicationInterface;
 use interfaces::InterfaceHandler;
 
-fn main() {
-    // Read RUST_LOG environment variable and set trace accordingly, default is Level::ERROR
-    let subscriber = FmtSubscriber::builder()
-        .with_env_filter(EnvFilter::from_env("HERMES_LOG"))
+pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>> {
+    // Read environment variable and set trace accordingly, default is Level::ERROR
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_env("HERMES_LOG"))
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set loger");
 
-    tracing::info!("hermes is initializing");
-
-    // Build runtime
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-
-    rt.block_on(async move {
-        main_async().await;
-    });
-}
-
-async fn main_async() {
     // Read configuration
-    let args: Vec<String> = std::env::args().collect();
-
-    if args.len() < 2 {
-        tracing::error!("Configuration file is missing");
-        exit(1);
-    }
-
-    let config = match utilities::config_parse::parse_config(&args[1]) {
+    let config = match utilities::config_parse::parse_config(&args) {
         Ok(config) => config,
         Err(e) => {
             tracing::error!("Config file error: {}", e);
-            exit(1);
+            return Ok(1);
         }
     };
     let config_arc = Arc::new(RwLock::new(config.clone()));
@@ -116,4 +93,6 @@ async fn main_async() {
     // Start interfaces and watch them
     handler.start();
     handler.watch().await; // Block the thread, panic if service failed
+
+    return Ok(-8);
 }

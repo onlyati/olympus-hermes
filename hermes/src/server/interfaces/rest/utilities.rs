@@ -19,7 +19,7 @@ use tower_http::trace::TraceLayer;
 // Internal depencies
 use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction, utilities};
 
-use crate::utilities::config_parse::Config;
+use crate::server::utilities::config_parse::Config;
 
 // Import macroes
 use super::macros::{
@@ -353,7 +353,7 @@ async fn exec_script(
 
     // Call lua utility
     let modified_pair =
-        match crate::utilities::lua::run(config, old_pair, new_pair, exec.exec, arg.parms).await {
+        match crate::server::utilities::lua::run(config, old_pair, new_pair, exec.exec, arg.parms).await {
             Ok(modified_pair) => modified_pair,
             Err(e) => return_server_error!(format!("error during script exection: {}", e)),
         };
@@ -407,6 +407,11 @@ async fn exec_script(
     }
 }
 
+/// Return with 200 OK if interface run
+pub async fn health_check() -> impl IntoResponse {
+    return_ok!();
+}
+
 /// Start the REST server
 pub async fn run_async(
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
@@ -428,6 +433,7 @@ pub async fn run_async(
         .route("/logger/suspend", post(suspend_log))
         .route("/logger/resume", post(resume_log))
         .route("/exec", post(exec_script))
+        .route("/hc", get(health_check))
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(|error: BoxError| async move {

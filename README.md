@@ -5,7 +5,9 @@ Hermes is a message queue and in-memory database systems that I use for my hobbi
 - List keys
 - Set/Get/Remove/Trigger web hooks
 - Suspend/Resume its logging
-- Running stored procedures in form of lua scripts (lua 5.4 is supported)
+- Running stored procedures in form of lua scripts (lua 5.4 is supported)+
+
+For detailed information read [documentation](/docs/README.md).
 
 ## Example for usage
 
@@ -21,7 +23,7 @@ Any command can be executed on any interface, for example:
 echo -n "GET /root/status" | socat - tcp:127.0.0.1:3030
 
 # Using the gRPC interface via command line utility
-cli -H http://127.0.0.1:3031 get --key "/root/status"
+hermes cli -H http://127.0.0.1:3031 get --key "/root/status"
 
 # Using the REST API via cURL
 curl "127.0.0.1:3032/db?key=/root/status"
@@ -39,7 +41,7 @@ cd olympus-hermes/hermes
 cargo build --release
 ```
 
-After it, executable server binary (`target/release/hermes`) and cli (`target/release/cli`) are built. You can start server by `hermes <path-to-config>` command. Sample config file can be found in [config_default.toml](hermes/config_default.toml) file.
+After it, executable binary (`target/release/hermes`) is built. You can start server by `hermes server -c <path-to-config>` command. Sample config file can be found in [config_default.toml](hermes/config_default.toml) file.
 
 ## Install via docker
 

@@ -12,7 +12,7 @@ use hermes::hermes_server::{Hermes, HermesServer};
 use hermes::{Empty, ExecArg, Hook, HookCollection, Key, KeyList, LinkCollection, Pair};
 use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction, utilities};
 
-use crate::utilities::config_parse::Config;
+use crate::server::utilities::config_parse::Config;
 
 // Import macros
 use super::macros::{
@@ -327,7 +327,7 @@ impl Hermes for HermesGrpc {
 
         // // Call lua utility
         let modified_pair =
-            match crate::utilities::lua::run(config, old_pair, new_pair, request.exec, parms).await
+            match crate::server::utilities::lua::run(config, old_pair, new_pair, request.exec, parms).await
             {
                 Ok(modified_pair) => modified_pair,
                 Err(e) => return_server_error!(format!("error during script exection: {}", e)),

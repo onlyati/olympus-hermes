@@ -1,8 +1,27 @@
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, about, long_about)]
-pub struct Args {
+pub struct Parameters {
+    /// Start Hermes CLI
+    #[command(subcommand)]
+    pub mode: Mode,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum Mode {
+    /// Use Hermes CLI mode        
+    Cli(CliArgs),
+    /// Start Hermes server
+    Server {
+        /// Parameters for server
+        #[arg(long, short)]
+        config: String,
+    },
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct CliArgs {
     /// Specify the action what to do
     #[command(subcommand)]
     pub action: Action,

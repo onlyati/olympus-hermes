@@ -19,7 +19,7 @@ FROM debian:bullseye-slim
 ARG APP=/usr/local/bin
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates tzdata coreutils locales && \
+    apt-get install -y ca-certificates tzdata coreutils locales curl && \
     rm -rf /var/lib/apt/lists/*
 
 EXPOSE 3030
@@ -27,11 +27,11 @@ EXPOSE 3031
 EXPOSE 3032
 
 ENV HERMES_LOG=info
+ENV HERMES_CLI_LOG=error
 
 COPY ./config_default.toml /etc/defaults/hermes.toml
 
 COPY --from=builder /rust-docker/target/release/hermes ${APP}/hermes
-COPY --from=builder /rust-docker/target/release/cli ${APP}/cli
 
 RUN mkdir -p "/usr/var/hermes" && echo "" > /usr/var/hermes/init.dat \
     && mkdir -p "/usr/var/hermes" && echo "" > /usr/var/hermes/hook.dat \
@@ -40,6 +40,9 @@ RUN mkdir -p "/usr/var/hermes" && echo "" > /usr/var/hermes/init.dat \
 VOLUME /usr/var/hermes
 VOLUME /etc/olympus/hermes
 
+HEALTHCHECK --interval=10s --timeout=3s --start-period=2s --retries=3 \
+  CMD curl --fail --connect-timeout 5 127.0.0.1:3032/hc || exit 1
+
 WORKDIR ${APP}
 
-CMD [ "./hermes", "/etc/olympus/hermes/config.toml" ]
+CMD [ "./hermes", "server", "-c", "/etc/olympus/hermes/config.toml" ]
