@@ -381,6 +381,48 @@ impl Hermes for HermesGrpc {
             }
         }
     }
+
+    /// Endpoint for PUSH request
+    async fn push(&self, request: Request<Pair>) -> Result<Response<Empty>, Status> {
+        let request = request.into_inner();
+        let data_sender = check_self_sender!(&self.data_sender);
+
+        let (tx, rx) = channel();
+        let set_action = DatabaseAction::Push(tx, request.key, request.value);
+        send_data_request!(set_action, data_sender);
+
+        match rx.recv() {
+            Ok(response) => match response {
+                Ok(_) => return_ok_with_value!(Empty::default()),
+                Err(e) => return_client_error!(e.to_string()),
+            },
+            Err(e) => return_server_error!(e),
+        }
+    }
+
+    /// Endpoint for POP request
+    async fn pop(&self, request: Request<Key>) -> Result<Response<Pair>, Status> {
+        let request = request.into_inner();
+        let data_sender = check_self_sender!(&self.data_sender);
+
+        let (tx, rx) = channel();
+        let get_action = DatabaseAction::Pop(tx, request.key.clone());
+        send_data_request!(get_action, data_sender);
+
+        match rx.recv() {
+            Ok(response) => match response {
+                Ok(value) => match value {
+                    ValueType::RecordPointer(data) => return_ok_with_value!(Pair {
+                        key: request.key,
+                        value: data
+                    }),
+                    _ => return_server_error!("Pointer must be Record but it was Table"),
+                },
+                Err(e) => return_client_error!(e.to_string()),
+            },
+            Err(e) => return_server_error!(e),
+        }
+    }
 }
 
 /// Start gRPC server

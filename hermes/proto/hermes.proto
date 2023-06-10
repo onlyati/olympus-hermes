@@ -18,6 +18,8 @@ service Hermes {
     rpc SuspendLog (Empty) returns (Empty);
     rpc ResumeLog (Empty) returns (Empty);
     rpc ExecScript (ExecArg) returns (Empty);
+    rpc Push (Pair) returns (Empty);
+    rpc Pop (Key) returns (Pair);
 }
 
 message Key {

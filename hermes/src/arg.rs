@@ -153,7 +153,25 @@ pub enum Action {
         /// Final value should be written or it is just a trigger event
         #[arg(long)]
         save: bool,
-    }
+    },
+
+    /// Push value to a queue
+    Pop {
+        /// Specify the name of the key
+        #[arg(long, short)]
+        key: String,
+    },
+
+    /// Pop value from a queue
+    Push {
+        /// Specify the name of the key
+        #[arg(long, short)]
+        key: String,
+
+        /// Specify the value for the key
+        #[arg(long, short)]
+        value: String,
+    },
 }
 
 fn check_hostname(s: &str) -> Result<String, String> {
