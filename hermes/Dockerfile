@@ -27,11 +27,11 @@ EXPOSE 3031
 EXPOSE 3032
 
 ENV HERMES_LOG=info
+ENV HERMES_CLI_LOG=error
 
 COPY ./config_default.toml /etc/defaults/hermes.toml
 
 COPY --from=builder /rust-docker/target/release/hermes ${APP}/hermes
-COPY --from=builder /rust-docker/target/release/cli ${APP}/cli
 
 RUN mkdir -p "/usr/var/hermes" && echo "" > /usr/var/hermes/init.dat \
     && mkdir -p "/usr/var/hermes" && echo "" > /usr/var/hermes/hook.dat \
@@ -42,4 +42,4 @@ VOLUME /etc/olympus/hermes
 
 WORKDIR ${APP}
 
-CMD [ "./hermes", "/etc/olympus/hermes/config.toml" ]
+CMD [ "./hermes", "server", "-c", "/etc/olympus/hermes/config.toml" ]

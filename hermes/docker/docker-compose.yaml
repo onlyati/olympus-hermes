@@ -2,10 +2,11 @@ version: "3.9"
 
 services:
   hermes:
-    image: hermes
+    image: hermes:latest
     container_name: hermes_test
     environment:
       - HERMES_LOG=info
+      - HERMES_CLI_LOG=error
     volumes:
       - ./var:/usr/var/hermes
       - ./etc:/etc/olympus/hermes
