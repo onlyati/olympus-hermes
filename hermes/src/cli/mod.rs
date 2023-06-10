@@ -1,44 +1,26 @@
 // External dependencies
-use clap::Parser;
 use hermes::hermes_client::HermesClient;
-use hermes::{Empty, Hook, HookCollection, Key, KeyList, Pair, ExecArg};
+use hermes::{Empty, ExecArg, Hook, HookCollection, Key, KeyList, Pair};
 use std::process::exit;
 use tonic::transport::Channel;
 use tonic::{Request, Response, Status};
 
 // Internal dependencies
-mod arg;
 mod config;
 
-use arg::{Action, Args};
+use crate::arg::{Action, CliArgs};
 
 // Generate structs for gRPC
 mod hermes {
     tonic::include_proto!("hermes");
 }
 
-fn main() {
-    // Read RUST_LOG environment variable and set trace accordingly, default is Level::ERROR
+pub async fn main_async(args: CliArgs) -> Result<i32, Box<dyn std::error::Error>> {
+    // Read environment variable and set trace accordingly, default is Level::ERROR
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_env_filter(tracing_subscriber::EnvFilter::from_env("HERMES_CLI_LOG"))
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set loger");
-
-    // Start runtime
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-    rt.block_on(async move {
-        match main_async().await {
-            Ok(rc) => exit(rc),
-            Err(_) => exit(-999),
-        }
-    });
-}
-
-async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
-    let args = Args::parse();
 
     let start = std::time::Instant::now();
 
@@ -252,20 +234,28 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
             }
         }
         // Execute script
-        Action::Exec { key, value, script, parms, save } => {
+        Action::Exec {
+            key,
+            value,
+            script,
+            parms,
+            save,
+        } => {
             let empty = String::new();
             let parms = match parms {
                 Some(parms) => parms,
                 None => &empty,
             };
 
-            let response: Result<Response<Empty>, Status> = grpc_client.exec_script(Request::new(ExecArg {
-                key: key.clone(),
-                value: value.clone(),
-                exec: script.clone(),
-                parms: parms.clone(),
-                save: save.clone(),
-            })).await;
+            let response: Result<Response<Empty>, Status> = grpc_client
+                .exec_script(Request::new(ExecArg {
+                    key: key.clone(),
+                    value: value.clone(),
+                    exec: script.clone(),
+                    parms: parms.clone(),
+                    save: save.clone(),
+                }))
+                .await;
 
             if let Err(e) = response {
                 eprintln!("Failed request: {}", e.message());
@@ -281,7 +271,7 @@ async fn main_async() -> Result<i32, Box<dyn std::error::Error>> {
 }
 
 /// Create a new gRPC channel which connection to Hephaestus
-async fn create_grpc_channel(args: Args) -> Channel {
+async fn create_grpc_channel(args: CliArgs) -> Channel {
     if !args.hostname.starts_with("cfg://") {
         tracing::debug!("Not cfg:// protocoll is given");
         return Channel::from_shared(args.hostname.clone())

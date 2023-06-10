@@ -12,7 +12,7 @@ use onlyati_datastore::datastore::{
     utilities,
 };
 
-use crate::utilities::config_parse::Config;
+use crate::server::utilities::config_parse::Config;
 
 // Import macros
 use super::macros::{
@@ -412,7 +412,7 @@ async fn handle_command(
 
             // Call lua utility
             let modified_pair =
-                match crate::utilities::lua::run(config, old_pair, new_pair, script.clone(), None)
+                match crate::server::utilities::lua::run(config, old_pair, new_pair, script.clone(), None)
                     .await
                 {
                     Ok(modified_pair) => modified_pair,

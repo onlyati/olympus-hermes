@@ -2,7 +2,7 @@
 use std::sync::{mpsc::Sender, Arc, Mutex, RwLock};
 use std::thread::JoinHandle;
 
-use crate::utilities::config_parse::Config;
+use crate::server::utilities::config_parse::Config;
 
 // Internal depencies
 use super::ApplicationInterface;

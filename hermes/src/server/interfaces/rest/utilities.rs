@@ -19,7 +19,7 @@ use tower_http::trace::TraceLayer;
 // Internal depencies
 use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction, utilities};
 
-use crate::utilities::config_parse::Config;
+use crate::server::utilities::config_parse::Config;
 
 // Import macroes
 use super::macros::{
@@ -353,7 +353,7 @@ async fn exec_script(
 
     // Call lua utility
     let modified_pair =
-        match crate::utilities::lua::run(config, old_pair, new_pair, exec.exec, arg.parms).await {
+        match crate::server::utilities::lua::run(config, old_pair, new_pair, exec.exec, arg.parms).await {
             Ok(modified_pair) => modified_pair,
             Err(e) => return_server_error!(format!("error during script exection: {}", e)),
         };
