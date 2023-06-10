@@ -1,8 +1,7 @@
 # Command line (CLI) commands
 
 CLI is built in the project. It connect to the gRPC interface and using that. The `--help` or `-h` parameter explain what the CLI can do. Overview:
-```bash
-$ hermes cli --help
+```
 Use Hermes CLI mode
 
 Usage: hermes cli [OPTIONS] --hostname <HOSTNAME> <COMMAND>
