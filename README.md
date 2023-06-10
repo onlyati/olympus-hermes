@@ -7,7 +7,7 @@ Hermes is a message queue and in-memory database systems that I use for my hobbi
 - Suspend/Resume its logging
 - Running stored procedures in form of lua scripts (lua 5.4 is supported)+
 
-For detailed information read [documentation](/docs/README.md).
+For detailed information read [documentation](./docs/README.md).
 
 ## Example for usage
 
