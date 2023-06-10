@@ -34,7 +34,7 @@ For more details, check the [docs](docs/README.md).
 
 ## Docker install
 
-Easiest way to install Hermes is using docker, pull the image by `docker pull onlyati/hermes` and based on [docker-compose](../hermes/docker/docker-compose.yaml) it can be started easily.
+Easiest way to install Hermes is using docker, pull the image by `docker pull onlyati/hermes` and based on [docker-compose](hermes/docker/docker-compose.yaml) it can be started easily.
 
 ## Build yourself manually
 
