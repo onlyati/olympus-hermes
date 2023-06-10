@@ -39,6 +39,8 @@ pub async fn parse_request(
         "SUSPEND",
         "RESUME",
         "EXEC",
+        "PUSH",
+        "POP"
     ];
     let request = match String::from_utf8(request) {
         Ok(req) => req,
@@ -468,6 +470,43 @@ async fn handle_command(
             }
             else {
                 return_client_error!("Type can be either SET or TRIGGER");
+            }
+        }
+        "PUSH" => {
+            // SET without value is an error
+            if value.is_empty() {
+                tracing::debug!("no value specified for SET action");
+                return_client_error!("Value is missing")
+            }
+
+            // Handle SET request
+            let (tx, rx) = channel();
+            let set_action = DatabaseAction::Push(tx, key, value);
+            send_data_request!(set_action, data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return_ok!(),
+                    Err(e) => return_client_error!(e),
+                },
+                Err(e) => return_server_error!(e),
+            }
+        }
+        "POP" => {
+            // Handle GET request
+            let (tx, rx) = channel();
+            let get_action = DatabaseAction::Pop(tx, key);
+            send_data_request!(get_action, data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(value) => match value {
+                        ValueType::RecordPointer(data) => return_ok_with_value!(data),
+                        _ => return_server_error!("Pointer must be Record but it was Table"),
+                    },
+                    Err(e) => return_client_error!(e),
+                },
+                Err(e) => return_server_error!(e),
             }
         }
         _ => unreachable!(),

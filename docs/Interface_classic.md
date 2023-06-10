@@ -17,6 +17,8 @@ These commands does not requires any extra library, they are just simple text th
 | SUSPEND   | Suspend log                        | SUSPEND LOG                                      |
 | RESUME    | Resume log                         | RESUME LOG                                       |
 | EXEC      | Execute lua script                 | EXEC_SET _key_ _script_ _set-or-trigger_ _value_ |
+| PUSH      | Push value into a queue            | PUSH _key_ _value_                               |
+| POP       | Pop value from a queue             | POP _key_                                        |
 
 These command can be sent even from bash script by using `socat` utility, for example:
 ```bash
