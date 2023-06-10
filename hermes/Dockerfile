@@ -19,7 +19,7 @@ FROM debian:bullseye-slim
 ARG APP=/usr/local/bin
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates tzdata coreutils locales && \
+    apt-get install -y ca-certificates tzdata coreutils locales curl && \
     rm -rf /var/lib/apt/lists/*
 
 EXPOSE 3030
@@ -39,6 +39,9 @@ RUN mkdir -p "/usr/var/hermes" && echo "" > /usr/var/hermes/init.dat \
 
 VOLUME /usr/var/hermes
 VOLUME /etc/olympus/hermes
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=2s --retries=3 \
+  CMD curl --fail --connect-timeout 5 127.0.0.1:3032/hc || exit 1
 
 WORKDIR ${APP}
 

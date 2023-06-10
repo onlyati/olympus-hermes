@@ -62,6 +62,8 @@ You can check its log via `docker logs hermes_test` command.
 
 ### On host OS
 
+**Note:** This was done on Debian. On other distribution another or different steps might be required.
+
 Another option is to download Hermes, build on your own machine and run there without docker. For this `protobuf-compiler` package must be installed!
 If package is installed then by following steps, program can be build and run:
 ```
