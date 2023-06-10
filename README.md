@@ -2,10 +2,11 @@
 
 Hermes is a message queue and in-memory database systems that I use for my hobbi projects. Interfaces are built top of [datastore-rs](https://git.thinkaboutit.tech/PublicProjects/datastore-rs) library. It has all abilities to:
 - Set/Get/Remove keys
+  - Value type of key's value can be string of a string queue (FIFO)
 - List keys
 - Set/Get/Remove/Trigger web hooks
 - Suspend/Resume its logging
-- Running stored procedures in form of lua scripts (lua 5.4 is supported)+
+- Running stored procedures in form of lua scripts (lua 5.4 is supported)
 
 For detailed information read [documentation](./docs/README.md).
 
