@@ -38,6 +38,7 @@ Then you have to perform the following steps:
 ```bash
 git clone https://git.thinkaboutit.tech/PublicProjects/olympus-hermes
 cd olympus-hermes/hermes
+cargo update
 cargo build --release
 ```
 

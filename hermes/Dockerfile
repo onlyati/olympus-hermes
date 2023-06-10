@@ -13,7 +13,8 @@ COPY ./src ./src
 COPY ./build.rs ./build.rs
 COPY ./Cargo.toml ./Cargo.toml
 
-RUN cargo build --release
+RUN cargo update \
+    && cargo build --release
 
 FROM debian:bullseye-slim
 ARG APP=/usr/local/bin
