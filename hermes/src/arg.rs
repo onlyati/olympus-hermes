@@ -10,7 +10,7 @@ pub struct Parameters {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum Mode {
-    /// User Hermes CLI mode        
+    /// Use Hermes CLI mode        
     Cli(CliArgs),
     /// Start Hermes server
     Server {
