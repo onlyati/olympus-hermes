@@ -23,8 +23,8 @@ pub struct Hook {
 /// Represent a list in initial toml file
 #[derive(Deserialize)]
 pub struct InitialData {
-    record: Vec<Record>,
-    hook: Vec<Hook>,
+    record: Option<Vec<Record>>,
+    hook: Option<Vec<Hook>>,
 }
 
 /// Parse initial file
@@ -41,16 +41,39 @@ pub fn parse_initial_file(
     };
 
     // Upload hooks
-    for hook in config.hook {
-        tracing::debug!("write hook with '{}' to the database", hook.prefix);
-        for link in &hook.links {
-            let (tx, rx) = utilities::get_channel_for_hook_set();
-            let action = DatabaseAction::HookSet(tx, hook.prefix.clone(), link.clone());
+    if let Some(hooks) = &config.hook {
+        for hook in hooks {
+            tracing::debug!("write hook with '{}' to the database", hook.prefix);
+            for link in &hook.links {
+                let (tx, rx) = utilities::get_channel_for_hook_set();
+                let action = DatabaseAction::HookSet(tx, hook.prefix.clone(), link.clone());
+    
+                if let Err(e) = data_sender.send(action) {
+                    return Err(format!("Error: {}", e));
+                }
+    
+                match rx.recv() {
+                    Ok(response) => match response {
+                        Err(e) => return Err(format!("Error: {}", e)),
+                        _ => (),
+                    },
+                    Err(e) => return Err(format!("Error: {}", e)),
+                }
+            }
+        }
+    }
 
+    // Upload records
+    if let Some(records) = &config.record {
+        for pair in records {
+            tracing::debug!("write pair with '{}' to the database", pair.key);
+            let (tx, rx) = channel();
+            let action = DatabaseAction::Set(tx, pair.key.clone(), pair.value.clone());
+    
             if let Err(e) = data_sender.send(action) {
                 return Err(format!("Error: {}", e));
             }
-
+    
             match rx.recv() {
                 Ok(response) => match response {
                     Err(e) => return Err(format!("Error: {}", e)),
@@ -58,25 +81,6 @@ pub fn parse_initial_file(
                 },
                 Err(e) => return Err(format!("Error: {}", e)),
             }
-        }
-    }
-
-    // Upload records
-    for pair in config.record {
-        tracing::debug!("write pair with '{}' to the database", pair.key);
-        let (tx, rx) = channel();
-        let action = DatabaseAction::Set(tx, pair.key, pair.value);
-
-        if let Err(e) = data_sender.send(action) {
-            return Err(format!("Error: {}", e));
-        }
-
-        match rx.recv() {
-            Ok(response) => match response {
-                Err(e) => return Err(format!("Error: {}", e)),
-                _ => (),
-            },
-            Err(e) => return Err(format!("Error: {}", e)),
         }
     }
 

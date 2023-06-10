@@ -407,6 +407,11 @@ async fn exec_script(
     }
 }
 
+/// Return with 200 OK if interface run
+pub async fn health_check() -> impl IntoResponse {
+    return_ok!();
+}
+
 /// Start the REST server
 pub async fn run_async(
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
@@ -428,6 +433,7 @@ pub async fn run_async(
         .route("/logger/suspend", post(suspend_log))
         .route("/logger/resume", post(resume_log))
         .route("/exec", post(exec_script))
+        .route("/hc", get(health_check))
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(|error: BoxError| async move {
