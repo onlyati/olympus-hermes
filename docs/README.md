@@ -34,8 +34,8 @@ Hermes is only one binary file. It does not need extra library to run or install
 
 ### Via docker image
 
-One option to start Hermes is to build a docker image and run it. [Dockerfile](/hermes/Dockerfile) can be used to build a Debian based image.
-Then [docker-compose.yaml](/hermes/docker/docker-compose.yaml) file can be used to bring it up, after it has been supervised.
+One option to start Hermes is to build a docker image and run it. [Dockerfile](../hermes/Dockerfile) can be used to build a Debian based image.
+Then [docker-compose.yaml](../hermes/docker/docker-compose.yaml) file can be used to bring it up, after it has been supervised.
 
 To build image yourself and run, execute the following commands:
 ```
