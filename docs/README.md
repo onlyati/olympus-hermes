@@ -69,6 +69,7 @@ If package is installed then by following steps, program can be build and run:
 ```
 $ git clone https://git.thinkaboutit.tech/PublicProjects/olympus-hermes
 $ cd olympus-hermes/hermes
+$ cargo update
 $ cargo build --release
 $ export HERMES_LOG=info
 $ ./target/release/hermes server -c ./config.toml
