@@ -7,6 +7,8 @@ This section discusses what actions can be done with the database data itself:
 - **GET**: Get value of a key
 - **REMKEY**: Remove specific key
 - **REMPATH**: Remove multiple key under a prefix. For example, having a database that has the following keys: `/root/status/server1`, `/root/status/server2`, `/root/status/server3`, `/root/ticket/341`, `/root/ticket/347`. If REMPATH is execute against `/root/status` then all the three key will disappear that begin with this path.
+- **EXEC SET**: Execute Lua script and save the modified key-value pair and send trigger
+- **EXEC TRIGGER**: Execute lua script and send trigger only with the modified key-value pair
 
 ## Hook manager related actions
 
