@@ -853,7 +853,7 @@ checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
 [[package]]
 name = "onlyati_datastore"
 version = "0.1.0"
-source = "git+https://git.thinkaboutit.tech/PublicProjects/datastore-rs#19e1a6ea7e17395875a014bf6ba1b9f5532aafc6"
+source = "git+https://git.thinkaboutit.tech/PublicProjects/datastore-rs#61dec2a5001b8377cb2bd545196cafb4cc1f936b"
 dependencies = [
  "chrono",
  "reqwest",
