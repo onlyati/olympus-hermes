@@ -11,7 +11,7 @@ fn main() {
     let args = arg::Parameters::parse();
 
     // Start runtime
-    let rt = tokio::runtime::Builder::new_current_thread()
+    let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap();

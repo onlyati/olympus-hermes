@@ -92,7 +92,42 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
 
     // Start interfaces and watch them
     handler.start();
-    handler.watch().await; // Block the thread, panic if service failed
+    
+    // Register signal actions for termination
+    tracing::debug!("register signal for termination (ctrl+c)");
+    let mut terminate =
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(signal) => signal,
+            Err(e) => {
+                tracing::error!("failed to register terminate signal: {}", e);
+                return Ok(8);
+            }
+        };
 
-    return Ok(-8);
+    tracing::debug!("register signal for interrupt (kill)");
+    let mut interrupt =
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()) {
+            Ok(signal) => signal,
+            Err(e) => {
+                tracing::error!("failed to register terminate signal: {}", e);
+                return Ok(8);
+            }
+        };
+
+    // Start application
+    tracing::debug!("service is starting");
+    tokio::select! {
+        _ = handler.watch() => {
+            tracing::error!("application has been stopped");
+            return Ok(-16);
+        }
+        _ = terminate.recv() => {
+            tracing::info!("stop signal has recieved");
+            return Ok(-8);
+        }
+        _ = interrupt.recv() => {
+            tracing::info!("interrupt signal has recieved");
+            return Ok(-8);
+        }
+    }
 }

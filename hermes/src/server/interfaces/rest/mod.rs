@@ -1,6 +1,6 @@
 // External depencies
 use std::sync::{mpsc::Sender, Arc, Mutex, RwLock};
-use std::thread::JoinHandle;
+use tokio::task::JoinHandle;
 
 use crate::server::utilities::config_parse::Config;
 
@@ -40,14 +40,8 @@ impl ApplicationInterface for Rest {
         let data_sender = self.data_sender.clone();
         let addres = self.address.clone();
         let cfg = self.config.clone();
-        let thread = std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-            rt.block_on(async move {
-                utilities::run_async(data_sender, addres, cfg).await;
-            });
+        let thread = tokio::spawn(async move {
+            utilities::run_async(data_sender, addres, cfg).await;
         });
 
         self.thread = Some(thread);
