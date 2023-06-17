@@ -20,11 +20,17 @@ use super::macros::{
 };
 
 /// Read parameters from request then execute them
+/// 
+/// # Parameters
+/// - `request`: Request that has been read from socket
+/// - `data_sender`: Sender that send data to database thread
+/// - `config`: Application's configuration
 pub async fn parse_request(
     request: Vec<u8>,
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     config: Arc<RwLock<Config>>,
 ) -> Result<Vec<u8>, String> {
+    // List all valid actions it will be matched later
     let valid_commands = vec![
         "SET",
         "GET",
@@ -52,7 +58,7 @@ pub async fn parse_request(
     let mut value = String::new();
     let mut copy = 0;
 
-    // Go through characters and parse it
+    // Go through characters and parse the request
     for byte in request.chars() {
         if copy == 0 {
             if byte == ' ' {
@@ -89,7 +95,13 @@ pub async fn parse_request(
     return Ok(handle_command(command, key, value, data_sender, config).await);
 }
 
-/// Requst has been parsed and this function executes what it had to
+/// Requst has been parsed and this function executes what it is made
+/// 
+/// # Parameters
+/// - `command`: Sction verb about what to do
+/// - `value`: This is all other characters that after the first words
+/// - `data_sender`: Sender that send data to database thread
+/// - `config`: Application's configuration
 async fn handle_command(
     command: String,
     key: String,
@@ -104,6 +116,9 @@ async fn handle_command(
     }
 
     match command.as_str() {
+        //
+        // Create or update record
+        //
         "SET" => {
             // SET without value is an error
             if value.is_empty() {
@@ -124,6 +139,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // Get value of specific key
+        //
         "GET" => {
             // Handle GET request
             let (tx, rx) = utilities::get_channel_for_get();
@@ -141,6 +159,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // List all keys under a specified prefix
+        //
         "LIST" => {
             // Handle LIST request
             let (tx, rx) = utilities::get_channel_for_list();
@@ -166,6 +187,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // Send a trigger, key-value pair is not saved but send to hook manager
+        //
         "TRIGGER" => {
             // TRIGGER without value is an error
             if value.is_empty() {
@@ -186,6 +210,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // Remove existing key
+        //
         "REMKEY" => {
             // Handle REMKEY request
             let (tx, rx) = utilities::get_channel_for_delete();
@@ -200,6 +227,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // Remove existing path
+        //
         "REMPATH" => {
             // Handle REMPATH request
             let (tx, rx) = utilities::get_channel_for_delete();
@@ -214,6 +244,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // Create new hook
+        //
         "SETHOOK" => {
             // Add new hook
             if value.is_empty() {
@@ -235,6 +268,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // Check that hook exist
+        //
         "GETHOOK" => {
             // Get links for a hook
             let prefix = key;
@@ -257,6 +293,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // Remove existing hook
+        //
         "REMHOOK" => {
             // Delete an existing hook
             if value.is_empty() {
@@ -278,6 +317,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // List all defined hook under a specified prefix
+        //
         "LISTHOOKS" => {
             // List hooks based on a prefix
             let prefix = key;
@@ -299,6 +341,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // Suepend database logging
+        //
         "SUSPEND" => {
             // Resume log action
             if key != "LOG" {
@@ -317,6 +362,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // Resume database logging
+        //
         "RESUME" => {
             // Suspend log action
             if key != "LOG" {
@@ -335,6 +383,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // Execute lua script
+        //
         "EXEC" => {
             // Execute lua script and save its output if needed
             // EXEC_SET <key> <script> <set-or-trigger> <value>
@@ -472,6 +523,9 @@ async fn handle_command(
                 return_client_error!("Type can be either SET or TRIGGER");
             }
         }
+        //
+        // Push new item into a queue
+        //
         "PUSH" => {
             // SET without value is an error
             if value.is_empty() {
@@ -492,6 +546,9 @@ async fn handle_command(
                 Err(e) => return_server_error!(e),
             }
         }
+        //
+        // Get an item from a queue
+        //
         "POP" => {
             // Handle GET request
             let (tx, rx) = channel();
@@ -514,6 +571,11 @@ async fn handle_command(
 }
 
 /// Run Classic interface
+/// 
+/// # Parameters
+/// - `request`: Request that has been read from socket
+/// - `data_sender`: Sender that send data to database thread
+/// - `config`: Application's configuration
 pub async fn run_async(
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,

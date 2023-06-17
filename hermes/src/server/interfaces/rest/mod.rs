@@ -13,14 +13,26 @@ mod utilities;
 
 /// Struct that handles the REST interface
 pub struct Rest {
+    /// Sender to send data to database thread
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+
+    /// Host address where the interface bind and listen
     address: String,
+
+    /// Task of the interface, it is used for health check
     thread: Option<JoinHandle<()>>,
+
+    /// Application's config file
     config: Arc<RwLock<Config>>,
 }
 
 impl Rest {
     /// Create new interface
+    /// 
+    /// # Parmeters
+    /// - `data_sender`: Sender to send data to database thread
+    /// - `address`: Host address where the interface bind and listen
+    /// - `config`: Application's config file
     pub fn new(
         data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
         address: String,
@@ -36,6 +48,7 @@ impl Rest {
 }
 
 impl ApplicationInterface for Rest {
+    /// Function to start the interface
     fn run(&mut self) {
         let data_sender = self.data_sender.clone();
         let addres = self.address.clone();
@@ -47,6 +60,7 @@ impl ApplicationInterface for Rest {
         self.thread = Some(thread);
     }
 
+    /// Check function that interface is running
     fn is_it_run(&self) -> Option<bool> {
         match &self.thread {
             Some(thread) => Some(!thread.is_finished()),

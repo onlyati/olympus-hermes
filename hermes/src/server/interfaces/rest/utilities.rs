@@ -25,53 +25,87 @@ use super::macros::{
 /// Struct that is injected into every endpoint
 #[derive(Clone)]
 pub struct InjectedData {
+    /// Sender to send data to database thread
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+
+    /// Configuration of application
     config: Arc<RwLock<Config>>,
 }
 
 /// Struct is used to query the SET endpoint
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Pair {
+    /// Key for record
     key: String,
+
+    /// Value of key
     value: String,
 }
 
 /// Struct is used to query the GET and LIST endpoint
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct KeyParm {
+    /// Key for record
     key: String,
 }
 
 /// Struct is used to query the REMKEY and REMPATH endpoints
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DeleteParm {
+    /// Key for record
     key: String,
+
+    /// Explain what must be deleted: `record` or `path`
     kind: Option<String>,
 }
 
 /// Struct that is used to return with hook value
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Hook {
+    /// Prefix that belongs to a hook definition
     prefix: String,
+
+    /// Link that belongs to a prefix
     links: Vec<String>,
 }
 
 /// Struct is used to query the EXEC endpoints
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ExecArg {
+    /// Key for record
     key: String,
+
+    /// Value for key
     value: String,
+
+    /// Parameters that is passed to lua script
     parms: Option<String>,
 }
 
 /// Struct is used to query the EXEC endpoints
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ExecParm {
+    /// Name of lua script that will be called
     exec: String,
+
+    /// Result of the script should be saved like a set key or just use as trigger
     save: bool,
 }
 
-/// GET endpoint
+/// Endpoint to get value of a key
+///
+/// # Http parameters:
+/// - Endpoint: `GET /db`
+/// - Body: `none`
+/// - Query: `?key=_string_`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn get_key(
     State(injected): State<InjectedData>,
     Query(parms): Query<KeyParm>,
@@ -93,7 +127,20 @@ async fn get_key(
     }
 }
 
-/// SET endpoint
+/// Endpoint to set value for a key, override value if already exist
+///
+/// # Http parameters:
+/// - Endpoint: `POST /db`
+/// - Body: `JSON { "key" : _string_, "value" : _string_ }`
+/// - Query: none
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn set_key(
     State(injected): State<InjectedData>,
     Json(pair): Json<Pair>,
@@ -112,7 +159,21 @@ async fn set_key(
     }
 }
 
-/// REMKEY and REMPATH endpoint
+/// Endpoint to remove record or complete path
+///
+/// # Http parameters:
+/// - Endpoint: `DELETE /db`
+/// - Body: `none`
+/// - Query: `?key=_string_&kind=_string_`
+///   - Kind if optional and it can be `record` or `path`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn delete_key(
     State(injected): State<InjectedData>,
     Query(parms): Query<DeleteParm>,
@@ -142,7 +203,20 @@ async fn delete_key(
     }
 }
 
-/// LIST endpoint
+/// Endpoint to list keys that prefix match with the specified
+///
+/// # Http parameters:
+/// - Endpoint: `GET /db_list`
+/// - Body: `none`
+/// - Query: `?key=_string_`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn list_keys(
     State(injected): State<InjectedData>,
     Query(parms): Query<KeyParm>,
@@ -168,7 +242,20 @@ async fn list_keys(
     }
 }
 
-/// TRIGGER endpoint
+/// Endpoint to issue a trigger. It does not save data but send pair to hook manager for check
+///
+/// # Http parameters:
+/// - Endpoint: `POST /trigger`
+/// - Body: `JSON { "key" : _string_, "value" : _string_ }`
+/// - Query: `none`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn trigger(
     State(injected): State<InjectedData>,
     Json(pair): Json<Pair>,
@@ -187,7 +274,20 @@ async fn trigger(
     }
 }
 
-/// SET hook
+/// Endpoint to define a new hook
+///
+/// # Http parameters:
+/// - Endpoint: `POST /hook`
+/// - Body: `JSON { "key" : _string_, "value" : _string_ }`
+/// - Query: `none`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn set_hook(
     State(injected): State<InjectedData>,
     Json(pair): Json<Pair>,
@@ -205,7 +305,20 @@ async fn set_hook(
     }
 }
 
-/// GET hook
+/// Endpoint to get a hook information
+///
+/// # Http parameters:
+/// - Endpoint: `GET /hook`
+/// - Body: `none`
+/// - Query: `?key=_string_`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn get_hook(
     State(injected): State<InjectedData>,
     Query(key): Query<KeyParm>,
@@ -228,7 +341,20 @@ async fn get_hook(
     }
 }
 
-/// REMOVE hook
+/// Endpoint to remove a hook
+///
+/// # Http parameters:
+/// - Endpoint: `DELETE /hook`
+/// - Body: `none`
+/// - Query: `?key=_string_`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn delete_hook(
     State(injected): State<InjectedData>,
     Query(pair): Query<Pair>,
@@ -246,7 +372,20 @@ async fn delete_hook(
     }
 }
 
-/// LIST hooks
+/// Endpoint to list hooks under a specified prefix
+///
+/// # Http parameters:
+/// - Endpoint: `GET /hook_list`
+/// - Body: `none`
+/// - Query: `?key=_string_`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn list_hooks(
     State(injected): State<InjectedData>,
     Query(key): Query<KeyParm>,
@@ -275,7 +414,20 @@ async fn list_hooks(
     }
 }
 
-/// SUSPEND LOG
+/// Endpoint to suspend the database logging
+///
+/// # Http parameters:
+/// - Endpoint: `POST /logger/suspend`
+/// - Body: `none`
+/// - Query: `none`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn suspend_log(State(injected): State<InjectedData>) -> impl IntoResponse {
     let (tx, rx) = channel();
     let action = DatabaseAction::SuspendLog(tx);
@@ -291,7 +443,20 @@ async fn suspend_log(State(injected): State<InjectedData>) -> impl IntoResponse 
     }
 }
 
-/// RESUME LOG
+/// Endpoint to resume the database logging
+///
+/// # Http parameters:
+/// - Endpoint: `POST /logger/resume`
+/// - Body: `none`
+/// - Query: `none`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn resume_log(State(injected): State<InjectedData>) -> impl IntoResponse {
     let (tx, rx) = channel();
     let action = DatabaseAction::ResumeLog(tx);
@@ -307,7 +472,21 @@ async fn resume_log(State(injected): State<InjectedData>) -> impl IntoResponse {
     }
 }
 
-/// EXEC_SET
+/// Endpoint to suspend the database logging
+///
+/// # Http parameters:
+/// - Endpoint: `POST /exec`
+/// - Body: `JSON { "key" : _string, "value" : _string_, "parms" : _string_ }`
+///   - `parms` is optional
+/// - Query: `?exec=_string_&save=_bool_`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn exec_script(
     State(injected): State<InjectedData>,
     Query(exec): Query<ExecParm>,
@@ -405,12 +584,35 @@ async fn exec_script(
     }
 }
 
-/// Return with 200 OK if interface run
+/// Endpoint to check that interface work
+///
+/// # Http parameters:
+/// - Endpoint: `GET /hc`
+/// - Body: `none`
+/// - Query: `none`
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 pub async fn health_check() -> impl IntoResponse {
     return_ok!();
 }
 
-/// Push string into queue
+/// Endpoint to push item into a queue
+///
+/// # Http parameters:
+/// - Endpoint: `POST /queue`
+/// - Body: `JSON { "key" : _string, "value" : _string_, "parms" : _string_ }`
+/// - Query: `none`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn push(State(injected): State<InjectedData>, Json(pair): Json<Pair>) -> impl IntoResponse {
     let (tx, rx) = channel();
     let set_action = DatabaseAction::Push(tx, pair.key.clone(), pair.value.clone());
@@ -426,7 +628,20 @@ async fn push(State(injected): State<InjectedData>, Json(pair): Json<Pair>) -> i
     }
 }
 
-/// Pop from queue
+/// Endpoint to get item from a queue
+///
+/// # Http parameters:
+/// - Endpoint: `GET /queue`
+/// - Body: `none`
+/// - Query: `?key=_string_`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn pop(
     State(injected): State<InjectedData>,
     Query(parms): Query<KeyParm>,
@@ -449,6 +664,11 @@ async fn pop(
 }
 
 /// Start the REST server
+/// 
+/// # Parameters
+/// - `data_sender`: Sender that send data to database thread
+/// - `address`: Host address where interface bind and listen
+/// - `config`: Configuration of the application
 pub async fn run_async(
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,

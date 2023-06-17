@@ -30,14 +30,26 @@ mod utilities;
 /// - PUSH `key` `value`
 /// - POP `key`
 pub struct Classic {
+    /// Sender to send data to database thread
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+
+    /// Host address where the interface bind and listen
     address: String,
+
+    /// Task of the interface, it is used for health check
     thread: Option<JoinHandle<()>>,
+
+    /// Application's config file
     config: Arc<RwLock<Config>>,
 }
 
 impl Classic {
     /// Create new interface
+    /// 
+    /// # Parmeters
+    /// - `data_sender`: Sender to send data to database thread
+    /// - `address`: Host address where the interface bind and listen
+    /// - `config`: Application's config file
     pub fn new(
         data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
         address: String,

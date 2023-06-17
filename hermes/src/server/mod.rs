@@ -11,6 +11,24 @@ use interfaces::ApplicationInterface;
 use interfaces::InterfaceHandler;
 use interfaces::websocket::Websocket;
 
+/// Main entrypoint when Hermes run as a server
+/// 
+/// # Parameters
+/// - `args`: Command arguments that has been parse bly `clap`.
+/// 
+/// # Details
+/// 
+/// This function start the server by the following stpes:
+/// 1. Initialize tracer
+/// 1. Read configuration that path has been passed as argument
+/// 1. Initialize datastore, logger and hook manager
+/// 1. Register interfaces that has been enabled in the configueration file
+/// 1. Register handler for interrupt and terminate signals (for graceful shutdown)
+/// 1. Start registered interfaces and if any of them fails, then stop the application
+/// 
+/// # Return
+/// 
+/// This function return with a code normally. If something error would occure then with the error itself.
 pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>> {
     // Read environment variable and set trace accordingly, default is Level::ERROR
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
@@ -18,6 +36,7 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set loger");
 
+    // Override the default panic handler that the output is written via tracer
     let _ = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         for line in info.to_string().lines() {
