@@ -258,8 +258,42 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         },
-        CommandMethod::SuspendLog => unimplemented!(),
-        CommandMethod::ResumeLog => unimplemented!(),
+        CommandMethod::SuspendLog => {
+            let (tx, rx) = channel();
+            let action = DatabaseAction::SuspendLog(tx);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return WsResponse::new_ok(""),
+                    Err(e) => return WsResponse::new_err(e),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        },
+        CommandMethod::ResumeLog => {
+            let (tx, rx) = channel();
+            let action = DatabaseAction::ResumeLog(tx);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return WsResponse::new_ok(""),
+                    Err(e) => return WsResponse::new_err(e),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        },
         CommandMethod::Exec => unimplemented!(),
         CommandMethod::Push => {
             let (key, value) = verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
