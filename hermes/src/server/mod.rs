@@ -18,6 +18,14 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set loger");
 
+    let _ = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        for line in info.to_string().lines() {
+            tracing::error!("{}", line);
+            std::process::exit(-1);
+        }
+    }));
+
     // Read configuration
     let config = match utilities::config_parse::parse_config(&args) {
         Ok(config) => config,
@@ -141,3 +149,4 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
         }
     }
 }
+

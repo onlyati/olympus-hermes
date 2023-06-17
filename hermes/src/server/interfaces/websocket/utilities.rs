@@ -127,7 +127,7 @@ pub async fn run_async(
             for line in e.to_string().lines() {
                 tracing::error!("{}", line);
             }
-            return;    
+            return;
         }
     };
 

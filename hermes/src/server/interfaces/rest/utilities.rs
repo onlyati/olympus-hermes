@@ -1,6 +1,4 @@
 // External depencies
-use axum::error_handling::HandleErrorLayer;
-use axum::BoxError;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -13,8 +11,6 @@ use std::net::SocketAddr;
 use std::sync::mpsc::channel;
 use std::sync::RwLock;
 use std::sync::{mpsc::Sender, Arc, Mutex};
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
 
 // Internal depencies
 use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction, utilities};
@@ -353,7 +349,9 @@ async fn exec_script(
 
     // Call lua utility
     let modified_pair =
-        match crate::server::utilities::lua::run(config, old_pair, new_pair, exec.exec, arg.parms).await {
+        match crate::server::utilities::lua::run(config, old_pair, new_pair, exec.exec, arg.parms)
+            .await
+        {
             Ok(modified_pair) => modified_pair,
             Err(e) => return_server_error!(format!("error during script exection: {}", e)),
         };
@@ -413,10 +411,7 @@ pub async fn health_check() -> impl IntoResponse {
 }
 
 /// Push string into queue
-async fn push(
-    State(injected): State<InjectedData>,
-    Json(pair): Json<Pair>,
-) -> impl IntoResponse {
+async fn push(State(injected): State<InjectedData>, Json(pair): Json<Pair>) -> impl IntoResponse {
     let (tx, rx) = channel();
     let set_action = DatabaseAction::Push(tx, pair.key.clone(), pair.value.clone());
 
@@ -477,31 +472,32 @@ pub async fn run_async(
         .route("/hc", get(health_check))
         .route("/queue", post(push))
         .route("/queue", get(pop))
-        .layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|error: BoxError| async move {
-                    if error.is::<tower::timeout::error::Elapsed>() {
-                        Ok(StatusCode::REQUEST_TIMEOUT)
-                    } else {
-                        Err((
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            tracing::error!("Unhandled internal error: {}", error),
-                        ))
-                    }
-                }))
-                .timeout(std::time::Duration::from_secs(10))
-                .layer(TraceLayer::new_for_http())
-                .into_inner(),
-        )
+        .layer(tower_http::timeout::TimeoutLayer::new(
+            std::time::Duration::from_secs(10),
+        ))
+        .layer(tower_http::trace::TraceLayer::new_for_http())
         .with_state(InjectedData {
             data_sender,
             config,
         });
 
-    let address: SocketAddr = address.parse().expect("Unable to parse REST api address");
+    let address: SocketAddr = match address.parse() {
+        Ok(addr) => addr,
+        Err(e) => {
+            for line in e.to_string().lines() {
+                tracing::error!("{}", line);
+            }
+            return;
+        }
+    };
 
-    axum::Server::bind(&address)
+    if let Err(e) = axum::Server::bind(&address)
         .serve(app.into_make_service())
         .await
-        .unwrap();
+    {
+        tracing::error!("failed to start REST server");
+        for line in e.to_string().lines() {
+            tracing::error!("{}", line);
+        }
+    }
 }

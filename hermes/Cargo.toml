@@ -16,7 +16,7 @@ tonic = { version = "0.9.2", features = ["tls"] }
 prost = "0.11.9"
 tokio = { version = "1.28.1", features = ["macros", "rt-multi-thread", "fs", "sync", "time", "process", "signal"] }
 tower = { version = "0.4.13", features = ["util", "timeout"] }
-tower-http = { version = "0.4.0", features = ["add-extension", "trace", "cors"] }
+tower-http = { version = "0.4.0", features = ["add-extension", "trace", "cors", "timeout"] }
 bytes = "1.4.0"
 axum = { version = "0.6.18", features = ["ws", "headers"] }
 serde = { version = "1.0.163", features = ["derive"] }
