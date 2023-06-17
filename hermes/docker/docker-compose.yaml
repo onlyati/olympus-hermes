@@ -11,4 +11,4 @@ services:
       - ./var:/usr/var/hermes
       - ./etc:/etc/olympus/hermes
     ports:
-      - 3030-3032:3030-3032
+      - 3030-3033:3030-3033

@@ -6,6 +6,7 @@ pub struct Network {
     pub classic: Option<String>,
     pub grpc: Option<String>,
     pub rest: Option<String>,
+    pub websocket: Option<String>,
 }
 
 /// Represent a initials table in initial toml file
@@ -48,6 +49,7 @@ pub fn parse_config(config_path: &String) -> Result<Config, String> {
     if config.network.classic.is_none()
         && config.network.grpc.is_none()
         && config.network.rest.is_none()
+        && config.network.websocket.is_none()
     {
         return Err(String::from("At least one interface must be enabled"));
     }
@@ -56,6 +58,7 @@ pub fn parse_config(config_path: &String) -> Result<Config, String> {
     tracing::info!("- network.classic: {:?}", config.network.classic);
     tracing::info!("- network.grpc: {:?}", config.network.grpc);
     tracing::info!("- network.rest: {:?}", config.network.rest);
+    tracing::info!("- network.websocket: {:?}", config.network.websocket);
     tracing::info!("- initials.path: {}", config.initials.path);
     tracing::info!("- logger.location: {}", config.logger.location);
 

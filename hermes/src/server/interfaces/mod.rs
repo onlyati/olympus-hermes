@@ -2,6 +2,7 @@ pub mod classic;
 pub mod grpc;
 pub mod rest;
 pub mod dummy;
+pub mod websocket;
 
 /// # Interface handler
 /// 
@@ -49,7 +50,7 @@ impl<T: ApplicationInterface> InterfaceHandler<T> {
                     Some(is_it_run) => {
                         if !is_it_run {
                             tracing::error!("'{}' has stopped", interface.0);
-                            panic!("InterfaceHandler: '{}' has stopped", interface.0);
+                            return;
                         }
                         if first_run && is_it_run {
                             tracing::info!("{}' is running!", interface.0);
@@ -57,7 +58,7 @@ impl<T: ApplicationInterface> InterfaceHandler<T> {
                     }
                     None => {
                         tracing::error!("{}' has not been started", interface.0);
-                        panic!("InterfaceHandler: '{}' has not been started", interface.0);
+                        return;
                     },
                 }
             }

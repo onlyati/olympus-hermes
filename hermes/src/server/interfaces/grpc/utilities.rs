@@ -1,11 +1,8 @@
 // External depencies
-use axum::error_handling::HandleErrorLayer;
-use reqwest::StatusCode;
+use std::net::SocketAddr;
 use std::sync::RwLock;
 use std::sync::{mpsc::channel, mpsc::Sender, Arc, Mutex};
 use tonic::{transport::Server, Request, Response, Status};
-use tower::{BoxError, ServiceBuilder};
-use tower_http::trace::TraceLayer;
 
 // Internal depencies
 use hermes::hermes_server::{Hermes, HermesServer};
@@ -326,12 +323,18 @@ impl Hermes for HermesGrpc {
         };
 
         // // Call lua utility
-        let modified_pair =
-            match crate::server::utilities::lua::run(config, old_pair, new_pair, request.exec, parms).await
-            {
-                Ok(modified_pair) => modified_pair,
-                Err(e) => return_server_error!(format!("error during script exection: {}", e)),
-            };
+        let modified_pair = match crate::server::utilities::lua::run(
+            config,
+            old_pair,
+            new_pair,
+            request.exec,
+            parms,
+        )
+        .await
+        {
+            Ok(modified_pair) => modified_pair,
+            Err(e) => return_server_error!(format!("error during script exection: {}", e)),
+        };
 
         // Make a SET action for the modified pair
         if request.save == true {
@@ -436,27 +439,26 @@ pub async fn run_async(
     hermes_grpc.config = config;
     let hermes_service = HermesServer::new(hermes_grpc);
 
+    let address: SocketAddr = match address.parse() {
+        Ok(addr) => addr,
+        Err(e) => {
+            for line in e.to_string().lines() {
+                tracing::error!("{}", line);
+            }
+            return;
+        }
+    };
+
     tracing::info!("gRPC interface on {} is starting...", address);
-    Server::builder()
+    if let Err(e) = Server::builder()
+        .layer(tower_http::trace::TraceLayer::new_for_grpc())
         .accept_http1(true)
-        .layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|error: BoxError| async move {
-                    if error.is::<tower::timeout::error::Elapsed>() {
-                        Ok(StatusCode::REQUEST_TIMEOUT)
-                    } else {
-                        Err((
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            tracing::error!("Unhandled internal error: {}", error),
-                        ))
-                    }
-                }))
-                .timeout(std::time::Duration::from_secs(10))
-                .layer(TraceLayer::new_for_http())
-                .into_inner(),
-        )
         .add_service(hermes_service)
-        .serve(address.parse().unwrap())
+        .serve(address)
         .await
-        .unwrap();
+    {
+        for line in e.to_string().lines() {
+            tracing::error!("{}", line);
+        }
+    }
 }

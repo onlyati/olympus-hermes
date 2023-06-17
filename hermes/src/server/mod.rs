@@ -9,6 +9,7 @@ use interfaces::grpc::Grpc;
 use interfaces::rest::Rest;
 use interfaces::ApplicationInterface;
 use interfaces::InterfaceHandler;
+use interfaces::websocket::Websocket;
 
 pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>> {
     // Read environment variable and set trace accordingly, default is Level::ERROR
@@ -16,6 +17,14 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
         .with_env_filter(tracing_subscriber::EnvFilter::from_env("HERMES_LOG"))
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set loger");
+
+    let _ = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        for line in info.to_string().lines() {
+            tracing::error!("{}", line);
+            std::process::exit(-1);
+        }
+    }));
 
     // Read configuration
     let config = match utilities::config_parse::parse_config(&args) {
@@ -90,6 +99,15 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
         )
     }
 
+    // Register websocket interface
+    if let Some(addr) = &config.network.websocket {
+        let config = config_arc.clone();
+        handler.register_interface(
+            Box::new(Websocket::new(sender.clone(), addr.clone(), config)),
+            "websocket".to_string(),
+        )
+    }
+
     // Start interfaces and watch them
     handler.start();
     
@@ -131,3 +149,4 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
         }
     }
 }
+

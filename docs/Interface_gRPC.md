@@ -1,4 +1,4 @@
-# gRPC inteface
+# gRPC interface
 
 Hermes can host a gRPC interface, by default on 3031 port. Following files is the proto file for interface:
 ```proto
