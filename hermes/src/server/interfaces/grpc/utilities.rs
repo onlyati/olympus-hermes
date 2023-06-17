@@ -32,7 +32,14 @@ struct HermesGrpc {
 /// gRPC endpoints
 #[tonic::async_trait]
 impl Hermes for HermesGrpc {
-    /// Endpoint for SET request
+    /// Endpoint to create or update key-value record
+    /// 
+    /// # Parameters
+    /// - `request`: Key-value pair that will be inserted or updated
+    ///   - Data type: `Pair { string key, string value }`
+    /// 
+    /// # Return
+    /// With empty placeholder structure.
     async fn set(&self, request: Request<Pair>) -> Result<Response<Empty>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -50,7 +57,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Endpoint for GET request
+    /// Endpoint to get value for a key
+    /// 
+    /// # Parameters
+    /// - `request`: A single key that will be searched
+    ///   - Data type: `Key { string key } `
+    /// 
+    /// # Return
+    /// If key was found then with a `Pair { string key, string value }`
     async fn get(&self, request: Request<Key>) -> Result<Response<Pair>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -74,7 +88,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Endpoint for REMKEY request
+    /// Endpoint to delete existing record
+    /// 
+    /// # Parameters
+    /// - `request`: A single key that will be searched
+    ///   - Data type: `Key { string key } `
+    /// 
+    /// # Return
+    /// With empty placeholder structure.
     async fn delete_key(&self, request: Request<Key>) -> Result<Response<Empty>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -92,7 +113,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Endpoint for REMPATH request
+    /// Endpoint to delete existing path
+    /// 
+    /// # Parameters
+    /// - `request`: A single key that will be searched
+    ///   - Data type: `Key { string key } `
+    /// 
+    /// # Return
+    /// With empty placeholder structure.
     async fn delete_path(&self, request: Request<Key>) -> Result<Response<Empty>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -110,7 +138,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Endpoint for LIST request
+    /// Endpoint to list keys
+    /// 
+    /// # Parameters
+    /// - `request`: A single key that will be searched
+    ///   - Data type: `Key { string key } `
+    /// 
+    /// # Return
+    /// With a `KeyList { repeated string keys }` item.
     async fn list_keys(&self, request: Request<Key>) -> Result<Response<KeyList>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -134,7 +169,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Endpoint for TRIGGER request
+    /// Endpoint to send a trigger, data is not saved but sent to hook manager
+    /// 
+    /// # Parameters
+    /// - `request`: Key-value pair that is used as trigger input data
+    ///   - Data type: `Pair { string key, string value }`
+    /// 
+    /// # Return
+    /// With empty placeholder structure.
     async fn trigger(&self, request: Request<Pair>) -> Result<Response<Empty>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -152,7 +194,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Create a new hook
+    /// Endpoint to create a new hook
+    /// 
+    /// # Parameters
+    /// - `request`: Prefix-link pair that will be defined in hook manager
+    ///   - Data type: `Pair { string key, string value }`
+    /// 
+    /// # Return
+    /// With empty placeholder structure.
     async fn set_hook(&self, request: Request<Pair>) -> Result<Response<Empty>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -170,7 +219,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Remove existing hook
+    /// Endpoint to delete existing hook
+    /// 
+    /// # Parameters
+    /// - `request`: Prefix-link pair that will be searched for delete
+    ///   - Data type: `Pair { string key, string value }`
+    /// 
+    /// # Return
+    /// With empty placeholder structure.
     async fn delete_hook(&self, request: Request<Pair>) -> Result<Response<Empty>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -188,7 +244,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Check that hook exist
+    /// Endpoint to get all links for specific prefix
+    /// 
+    /// # Parameters
+    /// - `request`: A single prefix that will be searched
+    ///   - Data type: `Key { string key } `
+    /// 
+    /// # Return
+    /// With a `Hook { string prefix, LinkCollection { repeated string links } links }` structure.
     async fn get_hook(&self, request: Request<Key>) -> Result<Response<Hook>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -213,7 +276,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// List hooks under a prefix
+    /// Endpoint to list defined hooks under a specified prefix
+    /// 
+    /// # Parameters
+    /// - `request`: A single key that will be searched
+    ///   - Data type: `Key { string key } `
+    /// 
+    /// # Return
+    /// Wuth a `HookCollection { repeated Hook { string prefix, LinkCollection { repeated string links } links } hooks }`  structure.
     async fn list_hooks(&self, request: Request<Key>) -> Result<Response<HookCollection>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -244,7 +314,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Suspend logger
+    /// Endpoint to suspend database logger
+    /// 
+    /// # Parameters
+    /// - `request`: Empty struct as placeholder
+    ///   - Data type: `Empty {}`
+    /// 
+    /// # Return
+    /// With empty placeholder structure.
     async fn suspend_log(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
         let data_sender = check_self_sender!(&self.data_sender);
 
@@ -261,7 +338,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Resume logger
+    /// Endpoint to resume database logger
+    /// 
+    /// # Parameters
+    /// - `request`: Empty struct as placeholder
+    ///   - Data type: `Empty {}`
+    /// 
+    /// # Return
+    /// With empty placeholder structure.
     async fn resume_log(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
         let data_sender = check_self_sender!(&self.data_sender);
 
@@ -278,7 +362,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Execute lua script and save the value
+    /// Endpoint to execute lua script and save the value
+    /// 
+    /// # Parameters
+    /// - `request`: Information for lua script execution
+    ///   - Data type: `ExecArg { string key, string value, string exec, string parms, bool save }`
+    /// 
+    /// # Return
+    /// With empty placeholder structure.
     async fn exec_script(&self, request: Request<ExecArg>) -> Result<Response<Empty>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -385,7 +476,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Endpoint for PUSH request
+    /// Endpoint to push new item into a queue
+    /// 
+    /// # Parameters
+    /// - `request`: Key-value pair that will be inserted
+    ///   - Data type: `Pair { string key, string value }`
+    /// 
+    /// # Return
+    /// With empty placeholder structure.
     async fn push(&self, request: Request<Pair>) -> Result<Response<Empty>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -403,7 +501,14 @@ impl Hermes for HermesGrpc {
         }
     }
 
-    /// Endpoint for POP request
+    /// Endpoint to pop item from a queue
+    /// 
+    /// # Parameters
+    /// - `request`: A single key that will be searched
+    ///   - Data type: `Key { string key } `
+    /// 
+    /// # Return
+    /// With a `Pair { string key, string value }` structure.
     async fn pop(&self, request: Request<Key>) -> Result<Response<Pair>, Status> {
         let request = request.into_inner();
         let data_sender = check_self_sender!(&self.data_sender);
@@ -429,6 +534,11 @@ impl Hermes for HermesGrpc {
 }
 
 /// Start gRPC server
+/// 
+/// # Parameters
+/// - `data_sender`: Sender that send data to database thread
+/// - `address`: Host address where interface bind and listen
+/// - `config`: Configuration of the application
 pub async fn run_async(
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,

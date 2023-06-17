@@ -13,16 +13,17 @@ mod utilities;
 mod structs;
 
 /// Websocket interface that run the function
-/// 
-/// # Fields
-/// - `data_sender`: Sender to send data to database thread
-/// - `address`: Host address where the interface bind and listen
-/// - `thread`: Task of the interface, it is used for health check
-/// - `config`: Application's config file
 pub struct Websocket {
+    /// Sender to send data to database thread
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+
+    /// Host address where the interface bind and listen
     address: String,
+
+    /// Task of the interface, it is used for health check
     thread: Option<JoinHandle<()>>,
+
+    /// Application's config file
     config: Arc<RwLock<Config>>,
 }
 
