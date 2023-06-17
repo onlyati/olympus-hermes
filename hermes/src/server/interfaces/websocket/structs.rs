@@ -42,3 +42,25 @@ pub(super) enum CommandMethod {
     Push,
     Pop,
 }
+
+#[derive(Serialize, Deserialize)]
+pub(super) struct WsResponse {
+    pub status: WsResponseStatus,
+    pub message: String,
+}
+
+impl WsResponse {
+    pub fn new_ok<T: std::fmt::Display>(message: T) -> Self {
+        return WsResponse { status: WsResponseStatus::Ok, message: message.to_string() }
+    }
+
+    pub fn new_err<T: std::fmt::Display>(message: T) -> Self {
+        return WsResponse { status: WsResponseStatus::Err, message: message.to_string() }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub(super) enum WsResponseStatus {
+    Ok,
+    Err,
+}

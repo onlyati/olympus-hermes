@@ -1,5 +1,6 @@
+use axum::extract::State;
 // External depencies
-use axum::extract::ws::Message;
+use axum::extract::ws::{CloseFrame, Message};
 use axum::TypedHeader;
 use axum::{
     extract::{
@@ -10,17 +11,20 @@ use axum::{
     routing::get,
     Router,
 };
+use onlyati_datastore::datastore::enums::ListType;
+use std::borrow::Cow;
 use std::net::SocketAddr;
+use std::sync::mpsc::channel;
 use std::sync::RwLock;
 use std::sync::{mpsc::Sender, Arc, Mutex};
 use tower_http::trace::DefaultMakeSpan;
 use tower_http::trace::TraceLayer;
 
 // Internal depencies
-use super::macros::send_data_back;
-use super::structs::WsRequest;
+use super::macros::{send_data_back, send_data_request, verify_key, verify_key_value};
+use super::structs::{CommandMethod, WsRequest, WsResponse, WsResponseStatus};
 use crate::server::utilities::config_parse::Config;
-use onlyati_datastore::datastore::enums::DatabaseAction;
+use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction};
 
 /// Struct that is injected into every endpoint
 #[derive(Clone)]
@@ -29,8 +33,193 @@ pub struct InjectedData {
     config: Arc<RwLock<Config>>,
 }
 
+async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
+    match req.command {
+        CommandMethod::GetKey => {
+            let key = verify_key!(req);
+
+            let (tx, rx) = channel();
+            let action = DatabaseAction::Get(tx, key);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(value) => match value {
+                        ValueType::RecordPointer(data) => return WsResponse::new_ok(data),
+                        _ => return WsResponse::new_err("Pointer must be Record but it was Table"),
+                    },
+                    Err(e) => return WsResponse::new_err(e.to_string()),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        }
+        CommandMethod::SetKey => {
+            let (key, value) = verify_key_value!(req);
+
+            let (tx, rx) = channel();
+            let action = DatabaseAction::Set(tx, key, value);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return WsResponse::new_ok(""),
+                    Err(e) => return WsResponse::new_err(e),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        }
+        CommandMethod::RemKey => {
+            let key = verify_key!(req);
+
+            let (tx, rx) = channel();
+            let action = DatabaseAction::DeleteKey(tx, key);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return WsResponse::new_ok(""),
+                    Err(e) => return WsResponse::new_err(e),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        }
+        CommandMethod::RemPath => {
+            let key = verify_key!(req);
+
+            let (tx, rx) = channel();
+            let action = DatabaseAction::DeleteTable(tx, key);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return WsResponse::new_ok(""),
+                    Err(e) => return WsResponse::new_err(e),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        }
+        CommandMethod::ListKeys => {
+            let key = verify_key!(req);
+
+            let (tx, rx) = channel();
+            let action = DatabaseAction::ListKeys(tx, key, ListType::All);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(list) => {
+                        let mut data = String::new();
+                        for key in list {
+                            data += key.get_key();
+                            data += "\n";
+                        }
+                        return WsResponse::new_ok(data);
+                    }
+                    Err(e) => return WsResponse::new_err(e),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        }
+        CommandMethod::Trigger => {
+            let (key, value) = verify_key_value!(req);
+
+            let (tx, rx) = channel();
+            let action = DatabaseAction::Trigger(tx, key, value);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return WsResponse::new_ok(""),
+                    Err(e) => return WsResponse::new_err(e),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        }
+        CommandMethod::GetHook => unimplemented!(),
+        CommandMethod::SetHook => unimplemented!(),
+        CommandMethod::RemHook => unimplemented!(),
+        CommandMethod::ListHooks => unimplemented!(),
+        CommandMethod::SuspendLog => unimplemented!(),
+        CommandMethod::ResumeLog => unimplemented!(),
+        CommandMethod::Exec => unimplemented!(),
+        CommandMethod::Push => {
+            let (key, value) = verify_key_value!(req);
+
+            let (tx, rx) = channel();
+            let action = DatabaseAction::Push(tx, key, value);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return WsResponse::new_ok(""),
+                    Err(e) => return WsResponse::new_err(e),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        }
+        CommandMethod::Pop => {
+            let key = verify_key!(req);
+
+            let (tx, rx) = channel();
+            let action = DatabaseAction::Pop(tx, key);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(value) => match value {
+                        ValueType::RecordPointer(data) => return WsResponse::new_ok(data),
+                        _ => return WsResponse::new_err("Pointer must be Record but it was Table"),
+                    },
+                    Err(e) => return WsResponse::new_err(e.to_string()),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        }
+    }
+}
+
 /// Handle the requests coming via websocket
-async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
+async fn handle_socket(mut socket: WebSocket, who: SocketAddr, injected: InjectedData) {
     while let Some(msg) = socket.recv().await {
         match msg {
             Ok(msg) => match msg {
@@ -45,15 +234,34 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
                             for line in e.lines() {
                                 tracing::error!("{}", line);
                             }
-                            send_data_back!(socket, Message::Text(e));
+                            send_data_back!(
+                                socket,
+                                Message::Close(Some(CloseFrame {
+                                    code: 1007,
+                                    reason: Cow::from(e)
+                                }))
+                            );
                             return;
                         }
                     };
 
-                    send_data_back!(
-                        socket,
-                        Message::Text(serde_json::to_string(&request).unwrap())
-                    );
+                    let response = handle_request(request, &injected).await;
+                    match serde_json::to_string(&response) {
+                        Ok(str) => send_data_back!(socket, Message::Text(str)),
+                        Err(e) => {
+                            for line in e.to_string().lines() {
+                                tracing::error!("{}", line);
+                            }
+                            send_data_back!(
+                                socket,
+                                Message::Close(Some(CloseFrame {
+                                    code: 1003,
+                                    reason: Cow::from("internal server error")
+                                }))
+                            );
+                            return;
+                        }
+                    }
                 }
                 // Close connection normally
                 Message::Close(c) => {
@@ -74,7 +282,13 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
                 }
                 other => {
                     tracing::warn!("not handled type: {:?}", other);
-                    send_data_back!(socket, Message::Text("Not handled data type".to_string()));
+                    send_data_back!(
+                        socket,
+                        Message::Close(Some(CloseFrame {
+                            code: 1003,
+                            reason: Cow::from("invalid type")
+                        }))
+                    );
                     return;
                 }
             },
@@ -88,6 +302,7 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
 
 /// Last point before connection would be upgraded to ws
 async fn ws_handler(
+    State(injected): State<InjectedData>,
     ws: WebSocketUpgrade,
     user_agent: Option<TypedHeader<headers::UserAgent>>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
@@ -97,9 +312,9 @@ async fn ws_handler(
     } else {
         String::from("Unknown browser")
     };
-    tracing::info!("`{user_agent}` at {addr} connected");
+    tracing::debug!("`{user_agent}` at {addr} connected");
 
-    ws.on_upgrade(move |socket| handle_socket(socket, addr))
+    return ws.on_upgrade(move |socket| handle_socket(socket, addr, injected));
 }
 
 /// Start the websocket server
@@ -108,7 +323,7 @@ pub async fn run_async(
     address: String,
     config: Arc<RwLock<Config>>,
 ) {
-    tracing::info!("REST interface on {} is starting...", address);
+    tracing::info!("Websocket interface on {} is starting...", address);
 
     let app = Router::new()
         .route("/ws", get(ws_handler))
