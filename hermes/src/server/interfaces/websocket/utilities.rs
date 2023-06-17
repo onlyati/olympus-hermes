@@ -59,7 +59,8 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             }
         }
         CommandMethod::SetKey => {
-            let (key, value) = verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
+            let (key, value) =
+                verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
 
             let (tx, rx) = channel();
             let action = DatabaseAction::Set(tx, key, value);
@@ -146,7 +147,8 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             }
         }
         CommandMethod::Trigger => {
-            let (key, value) = verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
+            let (key, value) =
+                verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
 
             let (tx, rx) = channel();
             let action = DatabaseAction::Trigger(tx, key, value);
@@ -191,9 +193,13 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     return WsResponse::new_err("internal server error");
                 }
             }
-        },
+        }
         CommandMethod::SetHook => {
-            let (prefix, link) = verify_two_items!(req.prefix, req.link, "'prefix' and 'link' must be specified");
+            let (prefix, link) = verify_two_items!(
+                req.prefix,
+                req.link,
+                "'prefix' and 'link' must be specified"
+            );
 
             let (tx, rx) = channel();
             let action = DatabaseAction::HookSet(tx, prefix, link);
@@ -211,9 +217,13 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     return WsResponse::new_err("internal server error");
                 }
             }
-        },
+        }
         CommandMethod::RemHook => {
-            let (prefix, link) = verify_two_items!(req.prefix, req.link, "'prefix' and 'link' must be specified");
+            let (prefix, link) = verify_two_items!(
+                req.prefix,
+                req.link,
+                "'prefix' and 'link' must be specified"
+            );
 
             let (tx, rx) = channel();
             let action = DatabaseAction::HookRemove(tx, prefix, link);
@@ -231,7 +241,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     return WsResponse::new_err("internal server error");
                 }
             }
-        },
+        }
         CommandMethod::ListHooks => {
             let prefix = verify_one_item!(req.prefix, "'prefix' must be specified");
 
@@ -247,7 +257,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                             response += format!("{} {:?}\n", prefix, links).as_str();
                         }
                         return WsResponse::new_ok(response);
-                    },
+                    }
                     Err(e) => return WsResponse::new_err(e),
                 },
                 Err(e) => {
@@ -257,7 +267,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     return WsResponse::new_err("internal server error");
                 }
             }
-        },
+        }
         CommandMethod::SuspendLog => {
             let (tx, rx) = channel();
             let action = DatabaseAction::SuspendLog(tx);
@@ -275,7 +285,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     return WsResponse::new_err("internal server error");
                 }
             }
-        },
+        }
         CommandMethod::ResumeLog => {
             let (tx, rx) = channel();
             let action = DatabaseAction::ResumeLog(tx);
@@ -293,10 +303,136 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     return WsResponse::new_err("internal server error");
                 }
             }
-        },
-        CommandMethod::Exec => unimplemented!(),
+        }
+        CommandMethod::Exec => {
+            let (script, save) =
+                verify_two_items!(req.exec, req.save, "'exec' and 'save' must be specified");
+            let (key, value) =
+                verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
+
+            // Get the old value of the keys
+            let (tx, rx) = channel();
+            let get_action = DatabaseAction::Get(tx, key.clone());
+
+            send_data_request!(get_action, injected.data_sender);
+
+            let old_pair = match rx.recv() {
+                Ok(response) => match response {
+                    Ok(value) => match value {
+                        ValueType::RecordPointer(data) => Some((key.clone(), data.clone())),
+                        _ => {
+                            tracing::error!("Pointer must be Record but it was Table");
+                            return WsResponse::new_err("internal server error");
+                        }
+                    },
+                    Err(_) => None,
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            };
+
+            // Get config
+            let config = match injected.config.read() {
+                Ok(cfg) => match &cfg.scripts {
+                    Some(scr) => match scr.execs.contains(&script) {
+                        true => scr.clone(),
+                        false => return WsResponse::new_err("requested script is not defined"),
+                    },
+                    None => return WsResponse::new_err("requested script is not defined"),
+                },
+                Err(_) => {
+                    tracing::error!("RwLock for config has poisned");
+                    panic!("RwLock for config has poisned");
+                }
+            };
+
+            let new_pair = (key.clone(), value.clone());
+
+            // Call lua utility
+            let modified_pair = match crate::server::utilities::lua::run(
+                config, old_pair, new_pair, script, req.parm,
+            )
+            .await
+            {
+                Ok(modified_pair) => modified_pair,
+                Err(e) => {
+                    for line in e.lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err(format!("failed to execute script"))
+                }
+            };
+
+            // Make a SET action for the modified pair
+            if save {
+                if modified_pair.1.is_empty() {
+                    let (tx, rx) = channel();
+
+                    let action = DatabaseAction::DeleteKey(tx, modified_pair.0);
+                    send_data_request!(action, injected.data_sender);
+
+                    match rx.recv() {
+                        Ok(response) => match response {
+                            Ok(_) => return WsResponse::new_ok(""),
+                            Err(e) => return WsResponse::new_err(e),
+                        },
+                        Err(e) => {
+                            for line in e.to_string().lines() {
+                                tracing::error!("{}", line);
+                            }
+                            return WsResponse::new_err("internal server error");
+                        }
+                    }
+                } else {
+                    let (tx, rx) = channel();
+                    let action = DatabaseAction::Set(tx, modified_pair.0, modified_pair.1);
+                    send_data_request!(action, injected.data_sender);
+
+                    match rx.recv() {
+                        Ok(response) => match response {
+                            Ok(_) => return WsResponse::new_ok(""),
+                            Err(e) => return WsResponse::new_err(e),
+                        },
+                        Err(e) => {
+                            for line in e.to_string().lines() {
+                                tracing::error!("{}", line);
+                            }
+                            return WsResponse::new_err("internal server error");
+                        }
+                    }
+                }
+            }
+            // Or a TRIGGER if this was requested
+            else {
+                if !modified_pair.1.is_empty() {
+                    let (tx, rx) = channel();
+                    let action = DatabaseAction::Trigger(tx, modified_pair.0, modified_pair.1);
+                    send_data_request!(action, injected.data_sender);
+
+                    match rx.recv() {
+                        Ok(response) => match response {
+                            Ok(_) => return WsResponse::new_ok(""),
+                            Err(e) => return WsResponse::new_err(e),
+                        },
+                        Err(e) => {
+                            for line in e.to_string().lines() {
+                                tracing::error!("{}", line);
+                            }
+                            return WsResponse::new_err("internal server error");
+                        }
+                    }
+                } else {
+                    return WsResponse::new_err("After script was run, the new value is empty");
+                }
+            }
+        }
         CommandMethod::Push => {
-            let (key, value) = verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
+            let (key, value) =
+                verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
 
             let (tx, rx) = channel();
             let action = DatabaseAction::Push(tx, key, value);
@@ -339,8 +475,6 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             }
         }
     }
-
-    return WsResponse::new_err("unimplemented response");
 }
 
 /// Handle the requests coming via websocket
