@@ -12,7 +12,13 @@ mod macros;
 mod utilities;
 mod structs;
 
-// gRPC interface that run the function
+/// Websocket interface that run the function
+/// 
+/// # Fields
+/// - `data_sender`: Sender to send data to database thread
+/// - `address`: Host address where the interface bind and listen
+/// - `thread`: Task of the interface, it is used for health check
+/// - `config`: Application's config file
 pub struct Websocket {
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,
@@ -22,6 +28,11 @@ pub struct Websocket {
 
 impl Websocket {
     /// Create new interface
+    /// 
+    /// # Parmeters
+    /// - `data_sender`: Sender to send data to database thread
+    /// - `address`: Host address where the interface bind and listen
+    /// - `config`: Application's config file
     pub fn new(
         data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
         address: String,

@@ -33,8 +33,24 @@ pub struct InjectedData {
     config: Arc<RwLock<Config>>,
 }
 
+/// Handle the request that is coming via websocket calls
+///
+/// # Parameters
+/// - `req`: Request itself
+/// - `injected`: This is the state from axum that contains the config and sender for database thread
+///
+/// # Details
+///
+/// This is called from `handle_socket` method. This function performs every single action that can be called.
+///
+/// # Return
+///
+/// Return with a `WsResponse` structure.
 async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
     match req.command {
+        //
+        // Get key
+        //
         CommandMethod::GetKey => {
             let key = verify_one_item!(req.key, "'key' must be specified");
 
@@ -58,6 +74,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // Set key
+        //
         CommandMethod::SetKey => {
             let (key, value) =
                 verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
@@ -79,6 +98,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // Remove key
+        //
         CommandMethod::RemKey => {
             let key = verify_one_item!(req.key, "'key' must be specified");
 
@@ -99,6 +121,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // Remove path
+        //
         CommandMethod::RemPath => {
             let key = verify_one_item!(req.key, "'key' must be specified");
 
@@ -119,6 +144,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // List keys
+        //
         CommandMethod::ListKeys => {
             let key = verify_one_item!(req.key, "'key' must be specified");
 
@@ -146,6 +174,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // Send trigger
+        //
         CommandMethod::Trigger => {
             let (key, value) =
                 verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
@@ -167,6 +198,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // Get hook
+        //
         CommandMethod::GetHook => {
             let prefix = verify_one_item!(req.prefix, "'prefix' must be specified");
 
@@ -194,6 +228,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // Set hook
+        //
         CommandMethod::SetHook => {
             let (prefix, link) = verify_two_items!(
                 req.prefix,
@@ -218,6 +255,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // Remove hook
+        //
         CommandMethod::RemHook => {
             let (prefix, link) = verify_two_items!(
                 req.prefix,
@@ -242,6 +282,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // List hooks
+        //
         CommandMethod::ListHooks => {
             let prefix = verify_one_item!(req.prefix, "'prefix' must be specified");
 
@@ -268,6 +311,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // Suspend log
+        //
         CommandMethod::SuspendLog => {
             let (tx, rx) = channel();
             let action = DatabaseAction::SuspendLog(tx);
@@ -286,6 +332,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // Resume log
+        //
         CommandMethod::ResumeLog => {
             let (tx, rx) = channel();
             let action = DatabaseAction::ResumeLog(tx);
@@ -304,6 +353,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // Execute lua script
+        //
         CommandMethod::Exec => {
             let (script, save) =
                 verify_two_items!(req.exec, req.save, "'exec' and 'save' must be specified");
@@ -363,7 +415,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     for line in e.lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err(format!("failed to execute script"))
+                    return WsResponse::new_err(format!("failed to execute script"));
                 }
             };
 
@@ -430,6 +482,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // Push pair to a queue
+        //
         CommandMethod::Push => {
             let (key, value) =
                 verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
@@ -451,6 +506,9 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
+        //
+        // Pop pair from the queue
+        //
         CommandMethod::Pop => {
             let key = verify_one_item!(req.key, "'key' must be specified");
 
@@ -478,6 +536,19 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
 }
 
 /// Handle the requests coming via websocket
+///
+/// # Parameters
+/// - `socket`: websocker that is used for receive and send data
+/// - `who`: address where the request was caming from
+/// - `injected`: state from axum
+///
+/// # Details
+///
+/// This function is called when the /ws endpoint is called. This is responsible for the websocket communication.
+/// This function does:
+/// - Process the command if incoming message was `Message::Text` request. Text is passed to `handle_request` function.
+/// - Respond with a `Message::Pong` for a `Message::Ping`
+/// - Gracefully shotdown the communication for `Message::Clonse` request
 async fn handle_socket(mut socket: WebSocket, who: SocketAddr, injected: InjectedData) {
     while let Some(msg) = socket.recv().await {
         match msg {
@@ -549,7 +620,18 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, injected: Injecte
     }
 }
 
-/// Last point before connection would be upgraded to ws
+/// Endpoint for /ws URI
+///
+/// # Parameters
+/// - `injected`: state from axum
+/// - `ws`: used to upgrade connection to websocket
+/// - `user_agent`: where from was it called
+/// - `addr`: connection information
+///
+/// # Details
+///
+/// This is called for GET /ws request. This is the last point before it would be upgrade to websocket,
+/// so this is the last action to gather connection information.
 async fn ws_handler(
     State(injected): State<InjectedData>,
     ws: WebSocketUpgrade,
@@ -567,6 +649,15 @@ async fn ws_handler(
 }
 
 /// Start the websocket server
+///
+/// # Parameters
+/// - `data_sender`: Sender to send data to database thread
+/// - `address`: where it should listen
+/// - `config`: application configuration
+///
+/// # Details
+///
+/// This is called to run this interface. `data_sender` and `config` will be shared in endpoints.
 pub async fn run_async(
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
     address: String,
