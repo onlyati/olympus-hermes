@@ -9,6 +9,7 @@ use interfaces::grpc::Grpc;
 use interfaces::rest::Rest;
 use interfaces::ApplicationInterface;
 use interfaces::InterfaceHandler;
+use interfaces::websocket::Websocket;
 
 pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>> {
     // Read environment variable and set trace accordingly, default is Level::ERROR
@@ -87,6 +88,15 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
         handler.register_interface(
             Box::new(Rest::new(sender.clone(), addr.clone(), config)),
             "REST".to_string(),
+        )
+    }
+
+    // Register websocket interface
+    if let Some(addr) = &config.network.websocket {
+        let config = config_arc.clone();
+        handler.register_interface(
+            Box::new(Websocket::new(sender.clone(), addr.clone(), config)),
+            "websocket".to_string(),
         )
     }
 
