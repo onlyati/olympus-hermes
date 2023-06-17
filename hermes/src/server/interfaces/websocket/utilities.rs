@@ -21,8 +21,8 @@ use tower_http::trace::DefaultMakeSpan;
 use tower_http::trace::TraceLayer;
 
 // Internal depencies
-use super::macros::{send_data_back, send_data_request, verify_key, verify_key_value};
-use super::structs::{CommandMethod, WsRequest, WsResponse, WsResponseStatus};
+use super::macros::{send_data_back, send_data_request, verify_one_item, verify_two_items};
+use super::structs::{CommandMethod, WsRequest, WsResponse};
 use crate::server::utilities::config_parse::Config;
 use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction};
 
@@ -36,7 +36,7 @@ pub struct InjectedData {
 async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
     match req.command {
         CommandMethod::GetKey => {
-            let key = verify_key!(req);
+            let key = verify_one_item!(req.key, "'key' must be specified");
 
             let (tx, rx) = channel();
             let action = DatabaseAction::Get(tx, key);
@@ -59,7 +59,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             }
         }
         CommandMethod::SetKey => {
-            let (key, value) = verify_key_value!(req);
+            let (key, value) = verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
 
             let (tx, rx) = channel();
             let action = DatabaseAction::Set(tx, key, value);
@@ -79,7 +79,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             }
         }
         CommandMethod::RemKey => {
-            let key = verify_key!(req);
+            let key = verify_one_item!(req.key, "'key' must be specified");
 
             let (tx, rx) = channel();
             let action = DatabaseAction::DeleteKey(tx, key);
@@ -99,7 +99,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             }
         }
         CommandMethod::RemPath => {
-            let key = verify_key!(req);
+            let key = verify_one_item!(req.key, "'key' must be specified");
 
             let (tx, rx) = channel();
             let action = DatabaseAction::DeleteTable(tx, key);
@@ -119,7 +119,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             }
         }
         CommandMethod::ListKeys => {
-            let key = verify_key!(req);
+            let key = verify_one_item!(req.key, "'key' must be specified");
 
             let (tx, rx) = channel();
             let action = DatabaseAction::ListKeys(tx, key, ListType::All);
@@ -146,7 +146,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             }
         }
         CommandMethod::Trigger => {
-            let (key, value) = verify_key_value!(req);
+            let (key, value) = verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
 
             let (tx, rx) = channel();
             let action = DatabaseAction::Trigger(tx, key, value);
@@ -165,15 +165,104 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 }
             }
         }
-        CommandMethod::GetHook => unimplemented!(),
-        CommandMethod::SetHook => unimplemented!(),
-        CommandMethod::RemHook => unimplemented!(),
-        CommandMethod::ListHooks => unimplemented!(),
+        CommandMethod::GetHook => {
+            let prefix = verify_one_item!(req.prefix, "'prefix' must be specified");
+
+            let (tx, rx) = channel();
+            let action = DatabaseAction::HookGet(tx, prefix);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok((_prefix, links)) => {
+                        let mut response = String::new();
+                        for link in links {
+                            response += &link[..];
+                            response += "\n";
+                        }
+                        return WsResponse::new_ok(response);
+                    }
+                    Err(e) => return WsResponse::new_err(e),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        },
+        CommandMethod::SetHook => {
+            let (prefix, link) = verify_two_items!(req.prefix, req.link, "'prefix' and 'link' must be specified");
+
+            let (tx, rx) = channel();
+            let action = DatabaseAction::HookSet(tx, prefix, link);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return WsResponse::new_ok(""),
+                    Err(e) => return WsResponse::new_err(e),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        },
+        CommandMethod::RemHook => {
+            let (prefix, link) = verify_two_items!(req.prefix, req.link, "'prefix' and 'link' must be specified");
+
+            let (tx, rx) = channel();
+            let action = DatabaseAction::HookRemove(tx, prefix, link);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(_) => return WsResponse::new_ok(""),
+                    Err(e) => return WsResponse::new_err(e),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        },
+        CommandMethod::ListHooks => {
+            let prefix = verify_one_item!(req.prefix, "'prefix' must be specified");
+
+            let (tx, rx) = channel();
+            let action = DatabaseAction::HookList(tx, prefix);
+            send_data_request!(action, injected.data_sender);
+
+            match rx.recv() {
+                Ok(response) => match response {
+                    Ok(hooks) => {
+                        let mut response = String::new();
+                        for (prefix, links) in hooks {
+                            response += format!("{} {:?}\n", prefix, links).as_str();
+                        }
+                        return WsResponse::new_ok(response);
+                    },
+                    Err(e) => return WsResponse::new_err(e),
+                },
+                Err(e) => {
+                    for line in e.to_string().lines() {
+                        tracing::error!("{}", line);
+                    }
+                    return WsResponse::new_err("internal server error");
+                }
+            }
+        },
         CommandMethod::SuspendLog => unimplemented!(),
         CommandMethod::ResumeLog => unimplemented!(),
         CommandMethod::Exec => unimplemented!(),
         CommandMethod::Push => {
-            let (key, value) = verify_key_value!(req);
+            let (key, value) = verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
 
             let (tx, rx) = channel();
             let action = DatabaseAction::Push(tx, key, value);
@@ -193,7 +282,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             }
         }
         CommandMethod::Pop => {
-            let key = verify_key!(req);
+            let key = verify_one_item!(req.key, "'key' must be specified");
 
             let (tx, rx) = channel();
             let action = DatabaseAction::Pop(tx, key);
@@ -216,6 +305,8 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             }
         }
     }
+
+    return WsResponse::new_err("unimplemented response");
 }
 
 /// Handle the requests coming via websocket
@@ -230,18 +321,8 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, injected: Injecte
                     let request = match WsRequest::from(&text[..]) {
                         Ok(req) => req,
                         Err(e) => {
-                            tracing::error!("failed to parse request");
-                            for line in e.lines() {
-                                tracing::error!("{}", line);
-                            }
-                            send_data_back!(
-                                socket,
-                                Message::Close(Some(CloseFrame {
-                                    code: 1007,
-                                    reason: Cow::from(e)
-                                }))
-                            );
-                            return;
+                            send_data_back!(socket, Message::Text(e));
+                            continue;
                         }
                     };
 

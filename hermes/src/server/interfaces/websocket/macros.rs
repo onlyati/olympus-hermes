@@ -27,22 +27,22 @@ macro_rules! send_data_back {
 }
 pub(in crate::server::interfaces::websocket) use send_data_back;
 
-macro_rules! verify_key {
-    ($req:expr) => {
-        match $req.key {
-            Some(key) => key,
-            _ => return WsResponse::new_err("'key' and 'value' must be specified for this command"),
+macro_rules! verify_one_item {
+    ($req:expr, $error_msg:expr) => {
+        match $req {
+            Some(value1) => value1,
+            _ => return WsResponse::new_err($error_msg),
         }
     };
 }
-pub(in crate::server::interfaces::websocket) use verify_key;
+pub(in crate::server::interfaces::websocket) use verify_one_item;
 
-macro_rules! verify_key_value {
-    ($req:expr) => {
-        match ($req.key, $req.value) {
-            (Some(key), Some(value)) => (key, value),
-            _ => return WsResponse::new_err("'key' and 'value' must be specified for this command"),
+macro_rules! verify_two_items {
+    ($req1:expr, $req2:expr, $error_msg:expr) => {
+        match ($req1, $req2) {
+            (Some(value1), Some(value2)) => (value1, value2),
+            _ => return WsResponse::new_err($error_msg),
         }
     };
 }
-pub(in crate::server::interfaces::websocket) use verify_key_value;
+pub(in crate::server::interfaces::websocket) use verify_two_items;
