@@ -85,5 +85,5 @@ pub fn parse_config(config_path: &String) -> Result<Config, String> {
         tracing::debug!("- scripts.execs: {:?}", scripts.execs);
     }
 
-    return Ok(config);
+    Ok(config)
 }

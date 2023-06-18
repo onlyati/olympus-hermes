@@ -22,7 +22,7 @@ pub async fn connecto_to_server(
         Err(e) => return Err(e.to_string()),
     };
 
-    return Ok(stream);
+    Ok(stream)
 }
 
 pub async fn perform_action(
@@ -153,12 +153,12 @@ pub async fn perform_action(
                 };
 
             if response.status == crate::common::websocket::WsResponseStatus::Ok {
-                return Ok(response.message);
+                Ok(response.message)
             } else {
-                return Err(response.message);
+                Err(response.message)
             }
         }
-        resp => return Err(format!("server responded with {}", resp)),
+        resp => Err(format!("server responded with {}", resp)),
     }
 }
 
@@ -182,12 +182,12 @@ pub struct Config {
 }
 
 /// Read config from client's config file
-/// 
+///
 /// # Parameters
 /// - `path`: Location of client configuration file
-/// 
+///
 /// # Return
-/// 
+///
 /// If it found and parsed file successfully then return with config. Else return with an error text.
 pub fn get_config(path: &String) -> Result<Config, String> {
     let file_content = get_file_content(path)?;
@@ -197,40 +197,38 @@ pub fn get_config(path: &String) -> Result<Config, String> {
         Err(e) => return Err(format!("Failed to parse config file: {}", e)),
     };
 
-    return Ok(config);
+    Ok(config)
 }
 
 /// Read a file content
-/// 
+///
 /// # Parameters
 /// - `path`: Path of file that has to be read
-/// 
+///
 /// # Return
 /// With the file content, else with an error text.
 fn get_file_content(path: &String) -> Result<String, String> {
     let path = std::path::Path::new(path);
     match path.exists() {
         true => match std::fs::read_to_string(path) {
-            Ok(content) => return Ok(content),
-            Err(e) => {
-                return Err(format!(
-                    "File '{}' could not been read: {}",
-                    path.display(),
-                    e
-                ))
-            }
+            Ok(content) => Ok(content),
+            Err(e) => Err(format!(
+                "File '{}' could not been read: {}",
+                path.display(),
+                e
+            )),
         },
-        false => return Err(format!("File '{}' does not exist", path.display())),
+        false => Err(format!("File '{}' does not exist", path.display())),
     }
 }
 
 /// Read and parse client configuration
-/// 
+///
 /// # Parameters
 /// - `path`: File path where the config can be located
-/// 
+///
 /// # Return
-/// 
+///
 /// With a parsed config struct, else with an error text
 pub fn client_config_parse(path: &String) -> Result<Config, String> {
     if std::path::Path::new(path).exists() {
@@ -240,24 +238,23 @@ pub fn client_config_parse(path: &String) -> Result<Config, String> {
         }
     }
 
-    return Err(String::from("config file does not exist"));
+    Err(String::from("config file does not exist"))
 }
 
 /// Get address for specified client
-/// 
+///
 /// # Parameters
 /// - `name`: Name of the server
 /// - `config`: Parsed client configuration file
-/// 
+///
 /// # Return
-/// 
+///
 /// If found return with address, else with None.
 pub fn get_address_for_client(name: String, config: &Config) -> Option<String> {
-    let name = if name.starts_with("cfg://") {
-        tracing::trace!("selected config is: {}", &name[6..]);
-        name[6..].to_string()
-    }
-    else {
+    let name = if let Some(name) = name.strip_prefix("cfg://") {
+        tracing::trace!("selected config is: {}", name);
+        name.to_string()
+    } else {
         name
     };
 
@@ -268,5 +265,5 @@ pub fn get_address_for_client(name: String, config: &Config) -> Option<String> {
         }
     }
 
-    return None;
+    None
 }

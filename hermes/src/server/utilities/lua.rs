@@ -13,11 +13,11 @@ pub async fn run(
     match run_lua(old_pair, new_pair, params, format!("{}/{}", config.exec_path, command)).await {
         Ok(pair) => {
             tracing::debug!("script {} has succesfully run", command);
-            return Ok(pair);
+            Ok(pair)
         },
         Err(e) => {
             tracing::error!("failed to execute {} script", command);
-            return Err(e.to_string());
+            Err(e.to_string())
         },
     }
 }
@@ -36,7 +36,7 @@ async fn run_lua(
         tracing::trace!("key-value pair already existed, set them as global");
         let old_table = lua.create_table()?;
         old_table.set("key", old.0.clone())?;
-        old_table.set("value", old.1.clone())?;
+        old_table.set("value", old.1)?;
         globals.set("old", old_table)?;
     }
 
@@ -61,5 +61,5 @@ async fn run_lua(
     let final_value = final_key.get("value")?;
     let final_key = final_key.get("key")?;
 
-    return Ok((final_key, final_value));
+    Ok((final_key, final_value))
 }

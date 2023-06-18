@@ -28,7 +28,7 @@ pub struct Websocket {
 
 impl Websocket {
     /// Create new interface
-    /// 
+    ///
     /// # Parmeters
     /// - `data_sender`: Sender to send data to database thread
     /// - `address`: Host address where the interface bind and listen
@@ -38,12 +38,12 @@ impl Websocket {
         address: String,
         config: Arc<RwLock<Config>>,
     ) -> Self {
-        return Self {
+        Self {
             data_sender,
             address,
             thread: None,
             config,
-        };
+        }
     }
 }
 
@@ -62,9 +62,6 @@ impl ApplicationInterface for Websocket {
 
     /// Check function that interface is running
     fn is_it_run(&self) -> Option<bool> {
-        match &self.thread {
-            Some(thread) => Some(!thread.is_finished()),
-            None => None,
-        }
+        self.thread.as_ref().map(|thread| !thread.is_finished())
     }
 }

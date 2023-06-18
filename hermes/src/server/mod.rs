@@ -146,15 +146,15 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
     tokio::select! {
         _ = handler.watch() => {
             tracing::error!("application has been stopped");
-            return Ok(-16);
+            Ok(-16)
         }
         _ = terminate.recv() => {
             tracing::info!("stop signal has recieved");
-            return Ok(-8);
+            Ok(-8)
         }
         _ = interrupt.recv() => {
             tracing::info!("interrupt signal has recieved");
-            return Ok(-8);
+            Ok(-8)
         }
     }
 }

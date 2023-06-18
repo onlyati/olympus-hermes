@@ -231,5 +231,5 @@ fn check_hostname(s: &str) -> Result<String, String> {
         }
     }
 
-    return Ok(String::from(s));
+    Ok(String::from(s))
 }

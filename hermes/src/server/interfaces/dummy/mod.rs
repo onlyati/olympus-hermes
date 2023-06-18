@@ -12,7 +12,7 @@ pub struct Dummy {
 impl Dummy {
     /// Create a new interface
     pub fn new(thread: Option<JoinHandle<()>>) -> Self {
-        return Self { thread };
+        Self { thread }
     }
 }
 
@@ -20,9 +20,6 @@ impl ApplicationInterface for Dummy {
     fn run(&mut self) {}
 
     fn is_it_run(&self) -> Option<bool> {
-        match &self.thread {
-            Some(thread) => Some(!thread.is_finished()),
-            None => None,
-        }
+        self.thread.as_ref().map(|thread| !thread.is_finished())
     }
 }

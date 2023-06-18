@@ -50,5 +50,5 @@ pub fn split_arguments(command: &str) -> Vec<String> {
         }
     }
 
-    return parameters;
+    parameters
 }

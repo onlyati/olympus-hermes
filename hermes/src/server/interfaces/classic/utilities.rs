@@ -20,7 +20,7 @@ use super::macros::{
 };
 
 /// Read parameters from request then execute them
-/// 
+///
 /// # Parameters
 /// - `request`: Request that has been read from socket
 /// - `data_sender`: Sender that send data to database thread
@@ -46,7 +46,7 @@ pub async fn parse_request(
         "RESUME",
         "EXEC",
         "PUSH",
-        "POP"
+        "POP",
     ];
     let request = match String::from_utf8(request) {
         Ok(req) => req,
@@ -92,11 +92,11 @@ pub async fn parse_request(
     );
 
     // Execute what the request asked then return with a reponse
-    return Ok(handle_command(command, key, value, data_sender, config).await);
+    Ok(handle_command(command, key, value, data_sender, config).await)
 }
 
 /// Requst has been parsed and this function executes what it is made
-/// 
+///
 /// # Parameters
 /// - `command`: Sction verb about what to do
 /// - `value`: This is all other characters that after the first words
@@ -403,8 +403,7 @@ async fn handle_command(
                     c1st_space = index;
                     index += 1;
                     continue;
-                }
-                else if c == ' ' && c2nd_space == 0 {
+                } else if c == ' ' && c2nd_space == 0 {
                     c2nd_space = index;
                     break;
                 }
@@ -426,7 +425,12 @@ async fn handle_command(
             let save = &value[c1st_space + 1..c2nd_space].to_string();
             let real_value = &value[c2nd_space + 1..].to_string();
 
-            tracing::debug!("execute '{}' script for '{}' key as '{}'", script, key, save);
+            tracing::debug!(
+                "execute '{}' script for '{}' key as '{}'",
+                script,
+                key,
+                save
+            );
             tracing::debug!("[{}]", real_value);
 
             // Get the old value of exists
@@ -438,7 +442,7 @@ async fn handle_command(
             let old_pair = match rx.recv() {
                 Ok(response) => match response {
                     Ok(value) => match value {
-                        ValueType::RecordPointer(data) => Some((key.clone(), data.clone())),
+                        ValueType::RecordPointer(data) => Some((key.clone(), data)),
                         _ => return_server_error!("Pointer must be Record but it was Table"),
                     },
                     Err(_) => None,
@@ -449,7 +453,7 @@ async fn handle_command(
             // Get config
             let config = match config.read() {
                 Ok(cfg) => match &cfg.scripts {
-                    Some(scr) => match scr.execs.contains(&script) {
+                    Some(scr) => match scr.execs.contains(script) {
                         true => scr.clone(),
                         false => return_client_error!("requested script is not defined"),
                     },
@@ -464,13 +468,18 @@ async fn handle_command(
             let new_pair = (key.clone(), real_value.trim().to_string());
 
             // Call lua utility
-            let modified_pair =
-                match crate::server::utilities::lua::run(config, old_pair, new_pair, script.clone(), None)
-                    .await
-                {
-                    Ok(modified_pair) => modified_pair,
-                    Err(e) => return_server_error!(format!("error during script exection: {}", e)),
-                };
+            let modified_pair = match crate::server::utilities::lua::run(
+                config,
+                old_pair,
+                new_pair,
+                script.clone(),
+                None,
+            )
+            .await
+            {
+                Ok(modified_pair) => modified_pair,
+                Err(e) => return_server_error!(format!("error during script exection: {}", e)),
+            };
 
             // Make a SET action for the modified pair
             if save == "SET" {
@@ -518,8 +527,7 @@ async fn handle_command(
                 } else {
                     return_client_error!("After script was run, the new value is empty");
                 }
-            }
-            else {
+            } else {
                 return_client_error!("Type can be either SET or TRIGGER");
             }
         }
@@ -571,7 +579,7 @@ async fn handle_command(
 }
 
 /// Run Classic interface
-/// 
+///
 /// # Parameters
 /// - `request`: Request that has been read from socket
 /// - `data_sender`: Sender that send data to database thread
@@ -640,7 +648,7 @@ pub async fn run_async(
                 return;
             }
             tracing::trace!("close connection");
-            let _ = socket.0.flush();
+            let _ = socket.0.flush().await;
         });
     }
 }
