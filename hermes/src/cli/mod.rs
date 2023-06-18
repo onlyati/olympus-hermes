@@ -1,11 +1,6 @@
 use crate::arg::CliArgs;
 use crate::common::websocket::client::{get_config, get_address_for_client};
 
-// Generate structs for gRPC
-mod hermes {
-    tonic::include_proto!("hermes");
-}
-
 /// Entrypoint of cli
 /// 
 /// # Parameters

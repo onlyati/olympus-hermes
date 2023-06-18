@@ -1,6 +1,5 @@
 [network]
 classic = "0.0.0.0:3030"     # Classic TCP interface bind to this address
-grpc = "0.0.0.0:3031"        # gRPC interface bind to this address
 rest = "0.0.0.0:3032"        # REST interface bind to this address
 websocket = "0.0.0.0:3033"   # REST interface bind to this address
 

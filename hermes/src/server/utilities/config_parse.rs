@@ -4,7 +4,6 @@ use serde::Deserialize;
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Network {
     pub classic: Option<String>,
-    pub grpc: Option<String>,
     pub rest: Option<String>,
     pub websocket: Option<String>,
 }
@@ -47,7 +46,6 @@ pub fn parse_config(config_path: &String) -> Result<Config, String> {
     };
 
     if config.network.classic.is_none()
-        && config.network.grpc.is_none()
         && config.network.rest.is_none()
         && config.network.websocket.is_none()
     {
@@ -56,7 +54,6 @@ pub fn parse_config(config_path: &String) -> Result<Config, String> {
 
     tracing::info!("Config settings:");
     tracing::info!("- network.classic: {:?}", config.network.classic);
-    tracing::info!("- network.grpc: {:?}", config.network.grpc);
     tracing::info!("- network.rest: {:?}", config.network.rest);
     tracing::info!("- network.websocket: {:?}", config.network.websocket);
     tracing::info!("- initials.path: {}", config.initials.path);
