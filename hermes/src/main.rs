@@ -7,6 +7,7 @@ mod arg;
 mod cli;
 mod server;
 mod shell;
+mod common;
 
 fn main() {
     let args = arg::Parameters::parse();

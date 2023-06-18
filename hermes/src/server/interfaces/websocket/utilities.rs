@@ -22,7 +22,7 @@ use tower_http::trace::TraceLayer;
 
 // Internal depencies
 use super::macros::{send_data_back, send_data_request, verify_one_item, verify_two_items};
-use super::structs::{CommandMethod, WsRequest, WsResponse};
+use crate::common::websocket::{CommandMethod, WsRequest, WsResponse};
 use crate::server::utilities::config_parse::Config;
 use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction};
 

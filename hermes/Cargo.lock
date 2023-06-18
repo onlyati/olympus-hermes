@@ -3,6 +3,15 @@
 version = 3
 
 [[package]]
+name = "aho-corasick"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67fc08ce920c31afb70f013dcce1bfc3a3195de6a228474e45e1f145b36f8d04"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -687,10 +696,12 @@ dependencies = [
  "mlua",
  "onlyati_datastore",
  "prost",
+ "regex",
  "reqwest",
  "rustyline",
  "serde",
  "serde_json",
+ "termion",
  "tokio",
  "tokio-tungstenite 0.19.0",
  "toml",
@@ -1086,6 +1097,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "numtoa"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8f8bdf33df195859076e54ab11ee78a1b208382d3a26ec40d142ffc1ecc49ef"
+
+[[package]]
 name = "once_cell"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1353,6 +1370,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_termios"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8440d8acb4fd3d277125b4bd01a6f38aee8d814b3b5fc09b3f2b825d37d3fe8f"
+dependencies = [
+ "redox_syscall 0.2.16",
+]
+
+[[package]]
 name = "redox_users"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1369,6 +1395,8 @@ version = "1.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0ab3ca65655bb1e41f2a8c8cd662eb4fb035e67c3f78da1d61dffe89d07300f"
 dependencies = [
+ "aho-corasick",
+ "memchr",
  "regex-syntax 0.7.2",
 ]
 
@@ -1758,6 +1786,18 @@ dependencies = [
  "redox_syscall 0.3.5",
  "rustix",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "termion"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "659c1f379f3408c7e5e84c7d0da6d93404e3800b6b9d063ba24436419302ec90"
+dependencies = [
+ "libc",
+ "numtoa",
+ "redox_syscall 0.2.16",
+ "redox_termios",
 ]
 
 [[package]]

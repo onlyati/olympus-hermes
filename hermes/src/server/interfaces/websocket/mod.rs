@@ -10,7 +10,6 @@ use onlyati_datastore::datastore::enums::DatabaseAction;
 
 mod macros;
 mod utilities;
-mod structs;
 
 /// Websocket interface that run the function
 pub struct Websocket {

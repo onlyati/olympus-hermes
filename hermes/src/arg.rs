@@ -35,7 +35,7 @@ pub enum Mode {
         /// - <protocol>://<hostname>:<port>, for example http://127.0.0.1:3041
         /// - cfg://<definition-name>, for example: cfg://atihome, it will search  or hostname and CA certificate
         #[arg(short = 'H', long, verbatim_doc_comment, value_parser = check_hostname)]
-        hostname: String,
+        hostname: Option<String>,
     }
 }
 
