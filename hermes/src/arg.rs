@@ -32,7 +32,7 @@ pub enum Mode {
     Shell {
         /// Where it should connect
         /// Allowed formats:
-        /// - <protocol>://<hostname>:<port>, for example http://127.0.0.1:3041
+        /// - <protocol>://<hostname>:<port>, for example ws://127.0.0.1:3043
         /// - cfg://<definition-name>, for example: cfg://atihome, it will search  or hostname and CA certificate
         #[arg(short = 'H', long, verbatim_doc_comment, value_parser = check_hostname)]
         hostname: Option<String>,
@@ -47,7 +47,7 @@ pub struct CliArgs {
 
     /// Where it should connect
     /// Allowed formats:
-    /// - <protocol>://<hostname>:<port>, for example http://127.0.0.1:3041
+    /// - <protocol>://<hostname>:<port>, for example ws://127.0.0.1:3043
     /// - cfg://<definition-name>, for example: cfg://atihome, it will search  or hostname and CA certificate
     #[arg(short = 'H', long, verbatim_doc_comment, value_parser = check_hostname)]
     pub hostname: String,
@@ -194,7 +194,7 @@ pub enum Action {
 }
 
 fn check_hostname(s: &str) -> Result<String, String> {
-    if !s.starts_with("http://") && !s.starts_with("https://") && !s.starts_with("cfg://") && !s.starts_with("ws://") {
+    if !s.starts_with("cfg://") && !s.starts_with("ws://") {
         return Err(String::from(
             "Protocol for hostname can be http:// or https:// or cfg://. ",
         ));

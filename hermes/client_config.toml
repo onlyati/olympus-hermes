@@ -1,4 +1,4 @@
 [[node]]
 name = "test"
-address = "http://127.0.0.1:3031"
+address = "ws://127.0.0.1:3043"
 
