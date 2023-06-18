@@ -223,3 +223,50 @@ fn get_file_content(path: &String) -> Result<String, String> {
         false => return Err(format!("File '{}' does not exist", path.display())),
     }
 }
+
+/// Read and parse client configuration
+/// 
+/// # Parameters
+/// - `path`: File path where the config can be located
+/// 
+/// # Return
+/// 
+/// With a parsed config struct, else with an error text
+pub fn client_config_parse(path: &String) -> Result<Config, String> {
+    if std::path::Path::new(path).exists() {
+        match get_config(path) {
+            Ok(cfg) => return Ok(cfg),
+            Err(e) => return Err(e),
+        }
+    }
+
+    return Err(String::from("config file does not exist"));
+}
+
+/// Get address for specified client
+/// 
+/// # Parameters
+/// - `name`: Name of the server
+/// - `config`: Parsed client configuration file
+/// 
+/// # Return
+/// 
+/// If found return with address, else with None.
+pub fn get_address_for_client(name: String, config: &Config) -> Option<String> {
+    let name = if name.starts_with("cfg://") {
+        tracing::trace!("selected config is: {}", &name[6..]);
+        name[6..].to_string()
+    }
+    else {
+        name
+    };
+
+    for node in &config.node {
+        if node.name == name {
+            tracing::debug!("found address: {}", node.address);
+            return Some(node.address.clone());
+        }
+    }
+
+    return None;
+}

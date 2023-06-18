@@ -1,5 +1,5 @@
 use crate::arg::CliArgs;
-use crate::common::websocket::client::get_config;
+use crate::common::websocket::client::{get_config, get_address_for_client};
 
 // Generate structs for gRPC
 mod hermes {
@@ -37,25 +37,13 @@ pub async fn main_async(args: CliArgs) -> Result<i32, Box<dyn std::error::Error>
             }
         };
 
-        let selected_node = args.hostname[6..].to_string();
-        tracing::trace!("parsed node name: {}", selected_node);
-
-        let mut found_address = String::new();
-
-        for node in config.node {
-            if node.name == selected_node {
-                tracing::debug!("found node in config: {:?}", node);
-                found_address = node.address;
-                break;
+        match get_address_for_client(args.hostname, &config) {
+            Some(addr) => addr,
+            None => {
+                println!(">Error\nSpecified config does not found in file");
+                return Ok(1);
             }
         }
-
-        if found_address.is_empty() {
-            println!(">Error\nSpecified config does not found in file");
-            return Ok(1);
-        }
-
-        found_address
     } else {
         args.hostname
     };

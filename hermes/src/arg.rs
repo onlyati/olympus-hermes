@@ -36,7 +36,11 @@ pub enum Mode {
         /// - cfg://<definition-name>, for example: cfg://atihome, it will search  or hostname and CA certificate
         #[arg(short = 'H', long, verbatim_doc_comment, value_parser = check_hostname)]
         hostname: Option<String>,
-    }
+
+        /// Config file for connection details
+        #[arg(short, long, default_value_t = String::from("/etc/olympus/hermes/client.toml"))]
+        config: String,
+    },
 }
 
 #[derive(Args, Debug, Clone)]

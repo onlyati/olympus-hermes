@@ -27,7 +27,7 @@ fn main() {
                 Ok(rc) => exit(rc),
                 Err(_) => exit(-999),
             },
-            Mode::Shell { hostname } => match shell::main_async(hostname).await {
+            Mode::Shell { hostname, config } => match shell::main_async(hostname, config).await {
                 Ok(rc) => exit(rc),
                 Err(_) => exit(-999),
             },
