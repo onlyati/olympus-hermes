@@ -14,10 +14,9 @@ For detailed information read [documentation](./docs/README.md).
 
 Hermes bascially has three separated interfaces and a CLI:
 1. Simple TCP based interface
-1. gRPC based interface
 1. REST based interface
-1. Bash CLI utility (that is using gRPC interface internally)
-1. Websocket
+1. Websocket based interface
+1. Command line interface (websocket based)
 
 Any command can be executed on any interface, for example:
 ```bash
@@ -37,6 +36,31 @@ $ curl "127.0.0.1:3032/db?key=/root/status"
 # Using websocket
 $ wscat -c "127.0.0.1:3033/ws" -x '{ "command" : "GetKey", "key" : "/root/status" }'
 {"status":"Ok","message":"running"}
+```
+
+There is also a shell that can be used to execute any command, example for usage:
+```
+$ hermes shell -c ./client_config.toml
+hermes@disconnected=> \l
+dev                 ws://127.0.0.1:3043
+test                ws://127.0.0.1:3033
+hermes@disconnected=> \c cfg://test
+hermes@ws://127.0.0.1:3033=> list-keys -k /root
+/root/status/proxy
+/root/status/server1
+/root/status/server2
+/root/status/server3
+/root/status/server4
+/root/test1
+/root/test2
+hermes@ws://127.0.0.1:3033=> \c cfg://dev
+hermes@ws://127.0.0.1:3043=> list-keys -k /root
+/root/ati/hooks/status1
+/root/ati/test
+/root/ati/test-script
+/root/status/server1
+hermes@ws://127.0.0.1:3043=> \d
+hermes@disconnected=> \q
 ```
 
 For more details, check the [docs](docs/README.md).

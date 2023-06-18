@@ -10,7 +10,6 @@ Document has some major parts, they are discussing:
 
 Following documents describes each interface parameters:
 - [Classic TCP interface](Interface_classic.md)
-- [gRPC interface](Interface_gRPC.md)
 - [REST interface](Interface_REST.md)
 - [Websocket interface](Interface_websocker.md)
 

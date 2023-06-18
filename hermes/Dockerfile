@@ -8,9 +8,7 @@ RUN cargo new --bin rust-docker
 WORKDIR /rust-docker
 
 RUN rm src/*.rs
-COPY ./proto ./proto
 COPY ./src ./src
-COPY ./build.rs ./build.rs
 COPY ./Cargo.toml ./Cargo.toml
 
 RUN cargo update \
@@ -23,7 +21,6 @@ RUN apt-get update && \
     apt-get install -y ca-certificates tzdata coreutils locales curl && \
     rm -rf /var/lib/apt/lists/*
 
-EXPOSE 3030
 EXPOSE 3031
 EXPOSE 3032
 EXPOSE 3033

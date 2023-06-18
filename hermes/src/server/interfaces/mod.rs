@@ -1,5 +1,4 @@
 pub mod classic;
-pub mod grpc;
 pub mod rest;
 pub mod dummy;
 pub mod websocket;

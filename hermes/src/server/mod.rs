@@ -5,7 +5,6 @@ mod utilities;
 
 use interfaces::classic::Classic;
 use interfaces::dummy::Dummy;
-use interfaces::grpc::Grpc;
 use interfaces::rest::Rest;
 use interfaces::ApplicationInterface;
 use interfaces::InterfaceHandler;
@@ -97,15 +96,6 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
         handler.register_interface(
             Box::new(Classic::new(sender.clone(), addr.clone(), config)),
             "Classic".to_string(),
-        )
-    }
-
-    // Register gRPC interface
-    if let Some(addr) = &config.network.grpc {
-        let config = config_arc.clone();
-        handler.register_interface(
-            Box::new(Grpc::new(sender.clone(), addr.clone(), config)),
-            "gRPC".to_string(),
         )
     }
 
