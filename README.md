@@ -14,10 +14,10 @@ For detailed information read [documentation](./docs/README.md).
 
 Hermes bascially has three separated interfaces and a CLI:
 1. Simple TCP based interface
-2. gRPC based interface
-3. REST based interface
-4. Bash CLI utility (that is using gRPC interface internally)
-5. Websocket
+1. gRPC based interface
+1. REST based interface
+1. Bash CLI utility (that is using gRPC interface internally)
+1. Websocket
 
 Any command can be executed on any interface, for example:
 ```bash
@@ -26,8 +26,8 @@ $ echo -n "GET /root/status" | socat - tcp:127.0.0.1:3030
 >Ok
 running
 
-# Using the gRPC interface via command line utility
-$ hermes cli -H http://127.0.0.1:3031 get --key "/root/status"
+# Using via command line utility
+$ hermes cli -H ws://127.0.0.1:3034 get --key "/root/status"
 running
 
 # Using the REST API via cURL

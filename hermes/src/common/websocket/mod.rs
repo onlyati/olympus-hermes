@@ -1,8 +1,10 @@
 use serde::{Serialize, Deserialize};
 
+pub mod client;
+
 /// Struct to parse request that are coming via websocket interface
-#[derive(Serialize, Deserialize)]
-pub(super) struct WsRequest {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct WsRequest {
     /// Command that tells what has to be done
     pub command: CommandMethod,
 
@@ -25,6 +27,21 @@ pub(super) struct WsRequest {
     pub save: Option<bool>,
 }
 
+impl Default for WsRequest {
+    fn default() -> Self {
+        return Self {
+            command: CommandMethod::GetKey,
+            key: None,
+            value: None,
+            prefix: None,
+            link: None,
+            exec: None,
+            parm: None,
+            save: None,
+        };
+    }
+}
+
 impl WsRequest {
     /// Parse `WsRequest` from text which must be a JSON
     /// 
@@ -39,8 +56,8 @@ impl WsRequest {
 }
 
 /// Enum for `WsRequest` structure that indicates the action type
-#[derive(Serialize, Deserialize)]
-pub(super) enum CommandMethod {
+#[derive(Serialize, Deserialize, Debug)]
+pub enum CommandMethod {
     GetKey,
     SetKey,
     RemKey,
@@ -60,7 +77,7 @@ pub(super) enum CommandMethod {
 
 /// Struct to send response back for websocket calls
 #[derive(Serialize, Deserialize)]
-pub(super) struct WsResponse {
+pub struct WsResponse {
     /// Store that it is successful (Ok) or failed (Err)
     pub status: WsResponseStatus,
 
@@ -82,8 +99,8 @@ impl WsResponse {
 }
 
 /// Enum to indicate the status of websocket request
-#[derive(Serialize, Deserialize)]
-pub(super) enum WsResponseStatus {
+#[derive(Serialize, Deserialize, PartialEq)]
+pub enum WsResponseStatus {
     /// Successfully done
     Ok,
 

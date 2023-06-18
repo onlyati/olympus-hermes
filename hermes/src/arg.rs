@@ -2,6 +2,14 @@ use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, about, long_about)]
+pub struct ShellParms {
+    /// Specify the action what to do
+    #[command(subcommand)]
+    pub action: Action,
+}
+
+#[derive(Parser, Debug, Clone)]
+#[command(author, about, long_about)]
 pub struct Parameters {
     /// Start Hermes CLI
     #[command(subcommand)]
@@ -12,10 +20,25 @@ pub struct Parameters {
 pub enum Mode {
     /// Use Hermes CLI mode        
     Cli(CliArgs),
+
     /// Start Hermes server
     Server {
         /// Parameters for server
         #[arg(long, short)]
+        config: String,
+    },
+
+    /// Start a shell to issue CLI commands
+    Shell {
+        /// Where it should connect
+        /// Allowed formats:
+        /// - <protocol>://<hostname>:<port>, for example ws://127.0.0.1:3043
+        /// - cfg://<definition-name>, for example: cfg://atihome, it will search  or hostname and CA certificate
+        #[arg(short = 'H', long, verbatim_doc_comment, value_parser = check_hostname)]
+        hostname: Option<String>,
+
+        /// Config file for connection details
+        #[arg(short, long, default_value_t = String::from("/etc/olympus/hermes/client.toml"))]
         config: String,
     },
 }
@@ -28,7 +51,7 @@ pub struct CliArgs {
 
     /// Where it should connect
     /// Allowed formats:
-    /// - <protocol>://<hostname>:<port>, for example http://127.0.0.1:3041
+    /// - <protocol>://<hostname>:<port>, for example ws://127.0.0.1:3043
     /// - cfg://<definition-name>, for example: cfg://atihome, it will search  or hostname and CA certificate
     #[arg(short = 'H', long, verbatim_doc_comment, value_parser = check_hostname)]
     pub hostname: String,
@@ -175,7 +198,7 @@ pub enum Action {
 }
 
 fn check_hostname(s: &str) -> Result<String, String> {
-    if !s.starts_with("http://") && !s.starts_with("https://") && !s.starts_with("cfg://") {
+    if !s.starts_with("cfg://") && !s.starts_with("ws://") {
         return Err(String::from(
             "Protocol for hostname can be http:// or https:// or cfg://. ",
         ));
