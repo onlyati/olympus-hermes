@@ -8,9 +8,7 @@ RUN cargo new --bin rust-docker
 WORKDIR /rust-docker
 
 RUN rm src/*.rs
-COPY ./proto ./proto
 COPY ./src ./src
-COPY ./build.rs ./build.rs
 COPY ./Cargo.toml ./Cargo.toml
 
 RUN cargo update \
