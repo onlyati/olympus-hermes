@@ -47,16 +47,17 @@ pub fn parse_initial_file(
             for link in &hook.links {
                 let (tx, rx) = utilities::get_channel_for_hook_set();
                 let action = DatabaseAction::HookSet(tx, hook.prefix.clone(), link.clone());
-    
+
                 if let Err(e) = data_sender.send(action) {
                     return Err(format!("Error: {}", e));
                 }
-    
+
                 match rx.recv() {
-                    Ok(response) => match response {
-                        Err(e) => return Err(format!("Error: {}", e)),
-                        _ => (),
-                    },
+                    Ok(response) => {
+                        if let Err(e) = response {
+                            return Err(format!("Error: {}", e));
+                        }
+                    }
                     Err(e) => return Err(format!("Error: {}", e)),
                 }
             }
@@ -69,20 +70,21 @@ pub fn parse_initial_file(
             tracing::debug!("write pair with '{}' to the database", pair.key);
             let (tx, rx) = channel();
             let action = DatabaseAction::Set(tx, pair.key.clone(), pair.value.clone());
-    
+
             if let Err(e) = data_sender.send(action) {
                 return Err(format!("Error: {}", e));
             }
-    
+
             match rx.recv() {
-                Ok(response) => match response {
-                    Err(e) => return Err(format!("Error: {}", e)),
-                    _ => (),
-                },
+                Ok(response) => {
+                    if let Err(e) = response {
+                        return Err(format!("Error: {}", e));
+                    }
+                }
                 Err(e) => return Err(format!("Error: {}", e)),
             }
         }
     }
 
-    return Ok(());
+    Ok(())
 }

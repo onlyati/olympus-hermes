@@ -15,9 +15,9 @@ pub struct InterfaceHandler<T> {
 impl<T: ApplicationInterface> InterfaceHandler<T> {
     /// Allocate new interface handler
     pub fn new() -> Self {
-        return Self {
+        Self {
             interfaces: Vec::new(),
-        };
+        }
     }
 
     /// Function to register interfaces that applied ApplicationInterface trait
@@ -36,7 +36,7 @@ impl<T: ApplicationInterface> InterfaceHandler<T> {
     /// When this function is called then `fn run()` function will be called with each of the interface.
     /// This function is implemented via `ApplicationInterface` trait.
     pub fn start(&mut self) {
-        if self.interfaces.len() == 0 {
+        if self.interfaces.is_empty() {
             tracing::error!("No interface is registered!");
             panic!("InterfaceHandler: No interface is registered!");
         }

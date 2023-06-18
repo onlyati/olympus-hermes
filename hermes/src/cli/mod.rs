@@ -66,5 +66,5 @@ pub async fn main_async(args: CliArgs) -> Result<i32, Box<dyn std::error::Error>
     let elapsed = start.elapsed();
     tracing::debug!("Measured runtime: {:?}", elapsed);
 
-    return Ok(0);
+    Ok(0)
 }

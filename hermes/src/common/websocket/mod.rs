@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub mod client;
 
@@ -29,7 +29,7 @@ pub struct WsRequest {
 
 impl Default for WsRequest {
     fn default() -> Self {
-        return Self {
+        Self {
             command: CommandMethod::GetKey,
             key: None,
             value: None,
@@ -38,19 +38,19 @@ impl Default for WsRequest {
             exec: None,
             parm: None,
             save: None,
-        };
+        }
     }
 }
 
 impl WsRequest {
     /// Parse `WsRequest` from text which must be a JSON
-    /// 
+    ///
     /// # Paramaters
     /// - `text`: This must be JSON and should be able to serialize as `WsRequest` structure
     pub fn from(text: &str) -> Result<Self, String> {
         match serde_json::from_str(text) {
-            Ok(value) => return Ok(value),
-            Err(e) => return Err(e.to_string()),
+            Ok(value) => Ok(value),
+            Err(e) => Err(e.to_string()),
         }
     }
 }
@@ -89,12 +89,18 @@ pub struct WsResponse {
 impl WsResponse {
     /// Create a new successful response
     pub fn new_ok<T: std::fmt::Display>(message: T) -> Self {
-        return WsResponse { status: WsResponseStatus::Ok, message: message.to_string() }
+        WsResponse {
+            status: WsResponseStatus::Ok,
+            message: message.to_string(),
+        }
     }
 
     /// Create a new failed response
     pub fn new_err<T: std::fmt::Display>(message: T) -> Self {
-        return WsResponse { status: WsResponseStatus::Err, message: message.to_string() }
+        WsResponse {
+            status: WsResponseStatus::Err,
+            message: message.to_string(),
+        }
     }
 }
 

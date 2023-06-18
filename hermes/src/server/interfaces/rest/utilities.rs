@@ -146,7 +146,7 @@ async fn set_key(
     Json(pair): Json<Pair>,
 ) -> impl IntoResponse {
     let (tx, rx) = utilities::get_channel_for_set();
-    let set_action = DatabaseAction::Set(tx, pair.key.clone(), pair.value.clone());
+    let set_action = DatabaseAction::Set(tx, pair.key.clone(), pair.value);
 
     send_data_request!(set_action, injected.data_sender);
 
@@ -261,7 +261,7 @@ async fn trigger(
     Json(pair): Json<Pair>,
 ) -> impl IntoResponse {
     let (tx, rx) = utilities::get_channel_for_set();
-    let trigger_action = DatabaseAction::Trigger(tx, pair.key.clone(), pair.value.clone());
+    let trigger_action = DatabaseAction::Trigger(tx, pair.key.clone(), pair.value);
 
     send_data_request!(trigger_action, injected.data_sender);
 
@@ -330,10 +330,7 @@ async fn get_hook(
     match rx.recv() {
         Ok(response) => match response {
             Ok((prefix, links)) => {
-                return_ok_with_value!(Hook {
-                    prefix: prefix,
-                    links: links
-                });
+                return_ok_with_value!(Hook { prefix, links });
             }
             Err(e) => return_client_error!(e.to_string()),
         },
@@ -400,10 +397,7 @@ async fn list_hooks(
                 let mut collection: Vec<Hook> = Vec::new();
 
                 for (prefix, links) in hooks {
-                    collection.push(Hook {
-                        prefix: prefix,
-                        links: links,
-                    });
+                    collection.push(Hook { prefix, links });
                 }
 
                 return_ok_with_value!(collection);
@@ -501,7 +495,7 @@ async fn exec_script(
     let old_pair = match rx.recv() {
         Ok(response) => match response {
             Ok(value) => match value {
-                ValueType::RecordPointer(data) => Some((arg.key.clone(), data.clone())),
+                ValueType::RecordPointer(data) => Some((arg.key.clone(), data)),
                 _ => return_server_error!("Pointer must be Record but it was Table"),
             },
             Err(_) => None,
@@ -565,22 +559,20 @@ async fn exec_script(
         }
     }
     // Or a TRIGGER if this was requested
-    else {
-        if !modified_pair.1.is_empty() {
-            let (tx, rx) = channel();
-            let action = DatabaseAction::Trigger(tx, modified_pair.0, modified_pair.1);
-            send_data_request!(action, injected.data_sender);
+    else if !modified_pair.1.is_empty() {
+        let (tx, rx) = channel();
+        let action = DatabaseAction::Trigger(tx, modified_pair.0, modified_pair.1);
+        send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
-                    Ok(_) => return_ok!(),
-                    Err(e) => return_client_error!(e.to_string()),
-                },
-                Err(e) => return_server_error!(e),
-            }
-        } else {
-            return_client_error!("After script was run, the new value is empty");
+        match rx.recv() {
+            Ok(response) => match response {
+                Ok(_) => return_ok!(),
+                Err(e) => return_client_error!(e.to_string()),
+            },
+            Err(e) => return_server_error!(e),
         }
+    } else {
+        return_client_error!("After script was run, the new value is empty");
     }
 }
 
@@ -615,7 +607,7 @@ pub async fn health_check() -> impl IntoResponse {
 /// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn push(State(injected): State<InjectedData>, Json(pair): Json<Pair>) -> impl IntoResponse {
     let (tx, rx) = channel();
-    let set_action = DatabaseAction::Push(tx, pair.key.clone(), pair.value.clone());
+    let set_action = DatabaseAction::Push(tx, pair.key.clone(), pair.value);
 
     send_data_request!(set_action, injected.data_sender);
 
@@ -664,7 +656,7 @@ async fn pop(
 }
 
 /// Start the REST server
-/// 
+///
 /// # Parameters
 /// - `data_sender`: Sender that send data to database thread
 /// - `address`: Host address where interface bind and listen

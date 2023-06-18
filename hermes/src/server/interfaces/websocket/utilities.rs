@@ -61,16 +61,16 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             match rx.recv() {
                 Ok(response) => match response {
                     Ok(value) => match value {
-                        ValueType::RecordPointer(data) => return WsResponse::new_ok(data),
-                        _ => return WsResponse::new_err("Pointer must be Record but it was Table"),
+                        ValueType::RecordPointer(data) => WsResponse::new_ok(data),
+                        _ => WsResponse::new_err("Pointer must be Record but it was Table"),
                     },
-                    Err(e) => return WsResponse::new_err(e.to_string()),
+                    Err(e) => WsResponse::new_err(e.to_string()),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -87,14 +87,14 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
 
             match rx.recv() {
                 Ok(response) => match response {
-                    Ok(_) => return WsResponse::new_ok(""),
-                    Err(e) => return WsResponse::new_err(e),
+                    Ok(_) => WsResponse::new_ok(""),
+                    Err(e) => WsResponse::new_err(e),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -110,14 +110,14 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
 
             match rx.recv() {
                 Ok(response) => match response {
-                    Ok(_) => return WsResponse::new_ok(""),
-                    Err(e) => return WsResponse::new_err(e),
+                    Ok(_) => WsResponse::new_ok(""),
+                    Err(e) => WsResponse::new_err(e),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -133,14 +133,14 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
 
             match rx.recv() {
                 Ok(response) => match response {
-                    Ok(_) => return WsResponse::new_ok(""),
-                    Err(e) => return WsResponse::new_err(e),
+                    Ok(_) => WsResponse::new_ok(""),
+                    Err(e) => WsResponse::new_err(e),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -162,15 +162,15 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                             data += key.get_key();
                             data += "\n";
                         }
-                        return WsResponse::new_ok(data);
+                        WsResponse::new_ok(data)
                     }
-                    Err(e) => return WsResponse::new_err(e),
+                    Err(e) => WsResponse::new_err(e),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -187,14 +187,14 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
 
             match rx.recv() {
                 Ok(response) => match response {
-                    Ok(_) => return WsResponse::new_ok(""),
-                    Err(e) => return WsResponse::new_err(e),
+                    Ok(_) => WsResponse::new_ok(""),
+                    Err(e) => WsResponse::new_err(e),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -216,15 +216,15 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                             response += &link[..];
                             response += "\n";
                         }
-                        return WsResponse::new_ok(response);
+                        WsResponse::new_ok(response)
                     }
-                    Err(e) => return WsResponse::new_err(e),
+                    Err(e) => WsResponse::new_err(e),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -244,14 +244,14 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
 
             match rx.recv() {
                 Ok(response) => match response {
-                    Ok(_) => return WsResponse::new_ok(""),
-                    Err(e) => return WsResponse::new_err(e),
+                    Ok(_) => WsResponse::new_ok(""),
+                    Err(e) => WsResponse::new_err(e),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -271,14 +271,14 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
 
             match rx.recv() {
                 Ok(response) => match response {
-                    Ok(_) => return WsResponse::new_ok(""),
-                    Err(e) => return WsResponse::new_err(e),
+                    Ok(_) => WsResponse::new_ok(""),
+                    Err(e) => WsResponse::new_err(e),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -299,15 +299,15 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                         for (prefix, links) in hooks {
                             response += format!("{} {:?}\n", prefix, links).as_str();
                         }
-                        return WsResponse::new_ok(response);
+                        WsResponse::new_ok(response)
                     }
-                    Err(e) => return WsResponse::new_err(e),
+                    Err(e) => WsResponse::new_err(e),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -321,14 +321,14 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
 
             match rx.recv() {
                 Ok(response) => match response {
-                    Ok(_) => return WsResponse::new_ok(""),
-                    Err(e) => return WsResponse::new_err(e),
+                    Ok(_) => WsResponse::new_ok(""),
+                    Err(e) => WsResponse::new_err(e),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -342,14 +342,14 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
 
             match rx.recv() {
                 Ok(response) => match response {
-                    Ok(_) => return WsResponse::new_ok(""),
-                    Err(e) => return WsResponse::new_err(e),
+                    Ok(_) => WsResponse::new_ok(""),
+                    Err(e) => WsResponse::new_err(e),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -371,7 +371,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             let old_pair = match rx.recv() {
                 Ok(response) => match response {
                     Ok(value) => match value {
-                        ValueType::RecordPointer(data) => Some((key.clone(), data.clone())),
+                        ValueType::RecordPointer(data) => Some((key.clone(), data)),
                         _ => {
                             tracing::error!("Pointer must be Record but it was Table");
                             return WsResponse::new_err("internal server error");
@@ -415,7 +415,7 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     for line in e.lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err(format!("failed to execute script"));
+                    return WsResponse::new_err("failed to execute script".to_string());
                 }
             };
 
@@ -429,14 +429,14 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
 
                     match rx.recv() {
                         Ok(response) => match response {
-                            Ok(_) => return WsResponse::new_ok(""),
-                            Err(e) => return WsResponse::new_err(e),
+                            Ok(_) => WsResponse::new_ok(""),
+                            Err(e) => WsResponse::new_err(e),
                         },
                         Err(e) => {
                             for line in e.to_string().lines() {
                                 tracing::error!("{}", line);
                             }
-                            return WsResponse::new_err("internal server error");
+                            WsResponse::new_err("internal server error")
                         }
                     }
                 } else {
@@ -446,40 +446,38 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
 
                     match rx.recv() {
                         Ok(response) => match response {
-                            Ok(_) => return WsResponse::new_ok(""),
-                            Err(e) => return WsResponse::new_err(e),
+                            Ok(_) => WsResponse::new_ok(""),
+                            Err(e) => WsResponse::new_err(e),
                         },
                         Err(e) => {
                             for line in e.to_string().lines() {
                                 tracing::error!("{}", line);
                             }
-                            return WsResponse::new_err("internal server error");
+                            WsResponse::new_err("internal server error")
                         }
                     }
                 }
             }
             // Or a TRIGGER if this was requested
-            else {
-                if !modified_pair.1.is_empty() {
-                    let (tx, rx) = channel();
-                    let action = DatabaseAction::Trigger(tx, modified_pair.0, modified_pair.1);
-                    send_data_request!(action, injected.data_sender);
+            else if !modified_pair.1.is_empty() {
+                let (tx, rx) = channel();
+                let action = DatabaseAction::Trigger(tx, modified_pair.0, modified_pair.1);
+                send_data_request!(action, injected.data_sender);
 
-                    match rx.recv() {
-                        Ok(response) => match response {
-                            Ok(_) => return WsResponse::new_ok(""),
-                            Err(e) => return WsResponse::new_err(e),
-                        },
-                        Err(e) => {
-                            for line in e.to_string().lines() {
-                                tracing::error!("{}", line);
-                            }
-                            return WsResponse::new_err("internal server error");
+                match rx.recv() {
+                    Ok(response) => match response {
+                        Ok(_) => WsResponse::new_ok(""),
+                        Err(e) => WsResponse::new_err(e),
+                    },
+                    Err(e) => {
+                        for line in e.to_string().lines() {
+                            tracing::error!("{}", line);
                         }
+                        WsResponse::new_err("internal server error")
                     }
-                } else {
-                    return WsResponse::new_err("After script was run, the new value is empty");
                 }
+            } else {
+                WsResponse::new_err("After script was run, the new value is empty")
             }
         }
         //
@@ -495,14 +493,14 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
 
             match rx.recv() {
                 Ok(response) => match response {
-                    Ok(_) => return WsResponse::new_ok(""),
-                    Err(e) => return WsResponse::new_err(e),
+                    Ok(_) => WsResponse::new_ok(""),
+                    Err(e) => WsResponse::new_err(e),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -519,16 +517,16 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             match rx.recv() {
                 Ok(response) => match response {
                     Ok(value) => match value {
-                        ValueType::RecordPointer(data) => return WsResponse::new_ok(data),
-                        _ => return WsResponse::new_err("Pointer must be Record but it was Table"),
+                        ValueType::RecordPointer(data) => WsResponse::new_ok(data),
+                        _ => WsResponse::new_err("Pointer must be Record but it was Table"),
                     },
-                    Err(e) => return WsResponse::new_err(e.to_string()),
+                    Err(e) => WsResponse::new_err(e.to_string()),
                 },
                 Err(e) => {
                     for line in e.to_string().lines() {
                         tracing::error!("{}", line);
                     }
-                    return WsResponse::new_err("internal server error");
+                    WsResponse::new_err("internal server error")
                 }
             }
         }
@@ -645,7 +643,7 @@ async fn ws_handler(
     };
     tracing::debug!("`{user_agent}` at {addr} connected");
 
-    return ws.on_upgrade(move |socket| handle_socket(socket, addr, injected));
+    ws.on_upgrade(move |socket| handle_socket(socket, addr, injected))
 }
 
 /// Start the websocket server

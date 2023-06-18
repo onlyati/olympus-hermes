@@ -58,7 +58,7 @@ pub async fn main_async(mut hostname: Option<String>, client_config: String) -> 
         }
         else if address.starts_with("cfg://") {
             if let Some(cfg) = &config {
-                match get_address_for_client(address.to_string(), &cfg) {
+                match get_address_for_client(address.to_string(), cfg) {
                     Some(address) => {
                         stream = match connecto_to_server(address.clone()).await {
                             Ok(stream) => Some(stream),
@@ -164,7 +164,7 @@ pub async fn main_async(mut hostname: Option<String>, client_config: String) -> 
                     //
                     // Command to connect to Hermes instance
                     //
-                    ref line if line.starts_with("\\c ") => {
+                    line if line.starts_with("\\c ") => {
                         // Disconnect from the current one if already connected
                         if let Some(socket) = &mut stream {
                             if let Err(e) = socket.send(Message::Close(None)).await {
@@ -184,7 +184,7 @@ pub async fn main_async(mut hostname: Option<String>, client_config: String) -> 
                         // If this is a cfg:// then resolve the address
                         if temp_host.starts_with("cfg://") {
                             match &config {
-                                Some(cfg) => match get_address_for_client(temp_host.clone(), &cfg) {
+                                Some(cfg) => match get_address_for_client(temp_host.clone(), cfg) {
                                     Some(addr) => temp_host = addr,
                                     None => {
                                         println!("{}specified server does not found in client config list", RED);
@@ -281,5 +281,5 @@ pub async fn main_async(mut hostname: Option<String>, client_config: String) -> 
         }
     }
 
-    return Ok(0);
+    Ok(0)
 }
