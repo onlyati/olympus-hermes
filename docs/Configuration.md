@@ -7,6 +7,7 @@ There are two configuration: one for the server that is mandatory, another one f
 classic = "127.0.0.1:3030"     # Classic TCP interface bind to this address
 grpc = "127.0.0.1:3031"        # gRPC interface bind to this address
 rest = "127.0.0.1:3032"        # REST interface bind to this address
+websocket = "127.0.0.1:3034"   # Websocket interface bind to this address
 
 [initials]
 # Records and hooks will be read from here during startup

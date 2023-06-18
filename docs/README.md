@@ -5,7 +5,7 @@
 Document has some major parts, they are discussing:
 - [Actions](Actions.md)
 - [Configuration](Configuration.md)
-- [Command link interface](CommandLine.md)
+- [Command link interface](Command_line.md)
 - [Stored procedures](Stored_procedures.md)
 
 Following documents describes each interface parameters:
