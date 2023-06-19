@@ -1,5 +1,5 @@
 [network]
-classic = "0.0.0.0:3030"     # Classic TCP interface bind to this address
+classic = "0.0.0.0:3031"     # Classic TCP interface bind to this address
 rest = "0.0.0.0:3032"        # REST interface bind to this address
 websocket = "0.0.0.0:3033"   # REST interface bind to this address
 
@@ -19,3 +19,8 @@ execs = [
     "simple_words.lua",
     "error_example.lua",
 ]
+
+[gitea]
+enable = true
+script = "gitea_parser.lua"
+key_base = "/root/gitea"

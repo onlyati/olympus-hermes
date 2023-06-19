@@ -656,10 +656,25 @@ async fn pop(
     }
 }
 
+/// Endpoint to receive gitea hooks
+///
+/// # Http paramaters:
+/// - Endpoint: `POST /gitea`
+/// - Body: `BodyStream`
+/// - Query: `none`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 pub async fn gitea(
     State(injected): State<InjectedData>,
     mut stream: BodyStream,
 ) -> impl IntoResponse {
+    // Get information from config
     let (script, prefix) = {
         // Deny if not enabled
         let config = injected.config.read().unwrap();
@@ -669,7 +684,10 @@ pub async fn gitea(
                     return_client_error!("gitea plugin is not enabled")
                 }
                 match &config.scripts {
-                    Some(scr) => (format!("{}/{}", scr.exec_path, gitea.script), gitea.key_base.clone()),
+                    Some(scr) => (
+                        format!("{}/{}", scr.exec_path, gitea.script),
+                        gitea.key_base.clone(),
+                    ),
                     None => return_client_error!("no script path is specified"),
                 }
             }
@@ -677,6 +695,7 @@ pub async fn gitea(
         }
     };
 
+    // Read the body from the request
     let mut message = String::new();
 
     while let Some(chunk) = stream.next().await {
@@ -693,13 +712,22 @@ pub async fn gitea(
         message.push_str(&msg);
     }
 
-    let (key, value) = match crate::server::utilities::lua::run_lua_for_gitea(script, message, prefix).await {
-        Ok((key, value)) => (key, value),
-        Err(e) => return_server_error!(e),
-    };
+    // Run the specified script that parse Gitea hook content then setup the key and value to be saved
+    let (key, value) =
+        match crate::server::utilities::lua::run_lua_for_gitea(script, message, prefix).await {
+            Ok((key, value)) => (key, value),
+            Err(e) => return_server_error!(e),
+        };
 
     tracing::debug!("save gitea data onto {} key", key);
 
+    // If key or value is empty then do not save
+    if value.is_empty() || key.is_empty() {
+        tracing::debug!("Either key or value is empty after gitea script, so it will not be saved");
+        return_ok!();
+    }
+
+    // Save the generated key and value
     let (tx, rx) = channel();
     let set_action = DatabaseAction::Set(tx, key, value);
 

@@ -75,8 +75,8 @@ pub async fn run_lua_for_gitea(
 
     tracing::trace!("setup new key-value pair as globa");
     let new_table = lua.create_table()?;
-    new_table.set("key", key_prefix.clone())?;
-    new_table.set("value", body.clone())?;
+    new_table.set("key", key_prefix)?;
+    new_table.set("value", body)?;
 
     globals.set("new", new_table)?;
 

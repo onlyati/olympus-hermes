@@ -1,5 +1,5 @@
 [network]
-classic = "127.0.0.1:3030"     # Classic TCP interface bind to this address
+classic = "127.0.0.1:3031"     # Classic TCP interface bind to this address
 rest = "127.0.0.1:3032"        # REST interface bind to this address
 websocket = "127.0.0.1:3033"   # Websocket interface bind to this address
 
@@ -14,3 +14,8 @@ location = "/usr/var/hermes/log.txt" # Which file should the database log writte
 lib_path = "/usr/var/hermes/lua/libs"
 exec_path = "/usr/var/hermes/lua"
 execs = []
+
+[gitea]
+enable = false
+# script = "gitea_parser.lua"
+# key_base = "/root/gitea"
