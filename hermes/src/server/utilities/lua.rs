@@ -63,3 +63,31 @@ async fn run_lua(
 
     Ok((final_key, final_value))
 }
+
+pub async fn run_lua_for_gitea(
+    script: String,
+    body: String,
+    key_prefix: String
+) -> Result<(String, String), mlua::Error> {
+    tracing::trace!("initializing lua environment");
+    let lua = Lua::new();
+    let globals = lua.globals();
+
+    tracing::trace!("setup new key-value pair as globa");
+    let new_table = lua.create_table()?;
+    new_table.set("key", key_prefix)?;
+    new_table.set("value", body)?;
+
+    globals.set("new", new_table)?;
+
+    tracing::debug!("execute {} script for gitea endpoint", script);
+    lua.load(std::path::Path::new(&script)).exec()?;
+
+    tracing::trace!("read modified new value and key from lua environment");
+    let final_key: Table = globals.get("new")?;
+
+    let final_value = final_key.get("value")?;
+    let final_key = final_key.get("key")?;
+
+    Ok((final_key, final_value))
+}

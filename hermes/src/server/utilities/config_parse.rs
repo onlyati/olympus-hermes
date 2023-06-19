@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-/// Represent a network table in initial toml file
+/// Represent a network table in config toml file
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Network {
     pub classic: Option<String>,
@@ -8,24 +8,32 @@ pub struct Network {
     pub websocket: Option<String>,
 }
 
-/// Represent a initials table in initial toml file
+/// Represent a initials table in config toml file
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Initials {
     pub path: String,
 }
 
-/// Represent a logger table in initial toml file
+/// Represent a logger table in config toml file
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Logger {
     pub location: String,
 }
 
-/// Represent a scripts table in initial toml file
+/// Represent a scripts table in config toml file
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Scripts {
     pub lib_path: Option<String>,
     pub exec_path: String,
     pub execs: Vec<String>,
+}
+
+/// Represent a gitea table in config toml file
+#[derive(Deserialize, Clone, Debug, Default)]
+pub struct Gitea {
+    pub enable: bool,
+    pub script: String,
+    pub key_base: String,
 }
 
 /// Represent the whole config.toml file
@@ -35,6 +43,7 @@ pub struct Config {
     pub initials: Initials,
     pub logger: Logger,
     pub scripts: Option<Scripts>,
+    pub gitea: Option<Gitea>,
 }
 
 pub fn parse_config(config_path: &String) -> Result<Config, String> {
@@ -83,6 +92,12 @@ pub fn parse_config(config_path: &String) -> Result<Config, String> {
         }
 
         tracing::debug!("- scripts.execs: {:?}", scripts.execs);
+    }
+
+    if let Some(gitea) = &config.gitea {
+        tracing::info!("- gitea.enable: {}", gitea.enable);
+        tracing::info!("- gitea.script: {}", gitea.script);
+        tracing::info!("- gitea.key_base: {}", gitea.key_base);
     }
 
     Ok(config)

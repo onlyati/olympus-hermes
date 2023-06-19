@@ -1,11 +1,12 @@
 // External depencies
 use axum::{
-    extract::{Query, State},
+    extract::{BodyStream, Query, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{delete, get, post},
     Json, Router,
 };
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::sync::mpsc::channel;
@@ -655,6 +656,92 @@ async fn pop(
     }
 }
 
+/// Endpoint to receive gitea hooks
+///
+/// # Http paramaters:
+/// - Endpoint: `POST /gitea`
+/// - Body: `BodyStream`
+/// - Query: `none`
+///
+/// # Other parameters
+/// - `injected`: Axum state that share information among endpoints
+///
+/// # Return codes
+/// - `OK`: Successfully done
+/// - `BAD_REQUEST`: Something was specified badly in the request
+/// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
+pub async fn gitea(
+    State(injected): State<InjectedData>,
+    mut stream: BodyStream,
+) -> impl IntoResponse {
+    // Get information from config
+    let (script, prefix) = {
+        // Deny if not enabled
+        let config = injected.config.read().unwrap();
+        match &config.gitea {
+            Some(gitea) => {
+                if !gitea.enable {
+                    return_client_error!("gitea plugin is not enabled")
+                }
+                match &config.scripts {
+                    Some(scr) => (
+                        format!("{}/{}", scr.exec_path, gitea.script),
+                        gitea.key_base.clone(),
+                    ),
+                    None => return_client_error!("no script path is specified"),
+                }
+            }
+            None => return_client_error!("gitea plugin is not enabled"),
+        }
+    };
+
+    // Read the body from the request
+    let mut message = String::new();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = match chunk {
+            Ok(chunk) => chunk,
+            Err(e) => return_server_error!(e),
+        };
+
+        let msg = match String::from_utf8(chunk.to_vec()) {
+            Ok(msg) => msg,
+            Err(e) => return_server_error!(e),
+        };
+
+        message.push_str(&msg);
+    }
+
+    // Run the specified script that parse Gitea hook content then setup the key and value to be saved
+    let (key, value) =
+        match crate::server::utilities::lua::run_lua_for_gitea(script, message, prefix).await {
+            Ok((key, value)) => (key, value),
+            Err(e) => return_server_error!(e),
+        };
+
+    tracing::debug!("save gitea data onto {} key", key);
+
+    // If key or value is empty then do not save
+    if value.is_empty() || key.is_empty() {
+        tracing::debug!("Either key or value is empty after gitea script, so it will not be saved");
+        return_ok!();
+    }
+
+    // Save the generated key and value
+    let (tx, rx) = channel();
+    let set_action = DatabaseAction::Set(tx, key, value);
+
+    send_data_request!(set_action, injected.data_sender);
+
+    match rx.recv() {
+        Ok(response) => match response {
+            Ok(_) => return_ok!(),
+            Err(e) => return_client_error!(e.to_string()),
+        },
+        Err(e) => return_server_error!(e),
+    }
+}
+
 /// Start the REST server
 ///
 /// # Parameters
@@ -684,6 +771,7 @@ pub async fn run_async(
         .route("/hc", get(health_check))
         .route("/queue", post(push))
         .route("/queue", get(pop))
+        .route("/gitea", post(gitea))
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_secs(10),
         ))
