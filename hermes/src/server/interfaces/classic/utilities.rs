@@ -7,10 +7,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
 // Internal dependencies
-use onlyati_datastore::datastore::{
-    enums::{pair::ValueType, DatabaseAction},
-    utilities,
-};
+use onlyati_datastore::datastore::enums::{pair::ValueType, DatabaseAction};
 
 use crate::server::utilities::config_parse::Config;
 
@@ -127,7 +124,7 @@ async fn handle_command(
             }
 
             // Handle SET request
-            let (tx, rx) = utilities::get_channel_for_set();
+            let (tx, rx) = channel();
             let set_action = DatabaseAction::Set(tx, key, value);
             send_data_request!(set_action, data_sender);
 
@@ -144,7 +141,7 @@ async fn handle_command(
         //
         "GET" => {
             // Handle GET request
-            let (tx, rx) = utilities::get_channel_for_get();
+            let (tx, rx) = channel();
             let get_action = DatabaseAction::Get(tx, key);
             send_data_request!(get_action, data_sender);
 
@@ -164,7 +161,7 @@ async fn handle_command(
         //
         "LIST" => {
             // Handle LIST request
-            let (tx, rx) = utilities::get_channel_for_list();
+            let (tx, rx) = channel();
             let list_action = DatabaseAction::ListKeys(
                 tx,
                 key,
@@ -215,7 +212,7 @@ async fn handle_command(
         //
         "REMKEY" => {
             // Handle REMKEY request
-            let (tx, rx) = utilities::get_channel_for_delete();
+            let (tx, rx) = channel();
             let rem_action = DatabaseAction::DeleteKey(tx, key);
             send_data_request!(rem_action, data_sender);
 
@@ -232,7 +229,7 @@ async fn handle_command(
         //
         "REMPATH" => {
             // Handle REMPATH request
-            let (tx, rx) = utilities::get_channel_for_delete();
+            let (tx, rx) = channel();
             let rem_action = DatabaseAction::DeleteTable(tx, key);
             send_data_request!(rem_action, data_sender);
 
@@ -434,7 +431,7 @@ async fn handle_command(
             tracing::debug!("[{}]", real_value);
 
             // Get the old value of exists
-            let (tx, rx) = utilities::get_channel_for_get();
+            let (tx, rx) = channel();
             let get_action = DatabaseAction::Get(tx, key.clone());
 
             send_data_request!(get_action, data_sender);
@@ -484,7 +481,7 @@ async fn handle_command(
             // Make a SET action for the modified pair
             if save == "SET" {
                 if modified_pair.1.is_empty() {
-                    let (tx, rx) = utilities::get_channel_for_delete();
+                    let (tx, rx) = channel();
 
                     let action = DatabaseAction::DeleteKey(tx, modified_pair.0);
                     send_data_request!(action, data_sender);

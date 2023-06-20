@@ -4,7 +4,7 @@ use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender;
 
 // Internal depencies
-use onlyati_datastore::datastore::{enums::DatabaseAction, utilities};
+use onlyati_datastore::datastore::{enums::DatabaseAction};
 
 /// Represent a record in initial toml file
 #[derive(Deserialize)]
@@ -45,7 +45,7 @@ pub fn parse_initial_file(
         for hook in hooks {
             tracing::debug!("write hook with '{}' to the database", hook.prefix);
             for link in &hook.links {
-                let (tx, rx) = utilities::get_channel_for_hook_set();
+                let (tx, rx) = channel();
                 let action = DatabaseAction::HookSet(tx, hook.prefix.clone(), link.clone());
 
                 if let Err(e) = data_sender.send(action) {
