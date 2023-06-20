@@ -10,6 +10,7 @@ WORKDIR /rust-docker
 RUN rm src/*.rs
 COPY ./src ./src
 COPY ./Cargo.toml ./Cargo.toml
+COPY ./datastore-rs ./datastore-rs
 
 RUN cargo update \
     && cargo build --release

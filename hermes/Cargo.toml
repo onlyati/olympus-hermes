@@ -1,25 +1,22 @@
-[package]
-name = "hermes"
+[workspace.package]
 version = "1.0.0"
 edition = "2021"
+repository = "https://git.thinkaboutit.tech/PublicProjects/olympus-hermes"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = ["datastore-rs"]
 
-[[bin]]
-name = "hermes"
-path = "src/main.rs"
-
-[dependencies]
+[workspace.dependencies]
+onlyati_datastore = { path = "./datastore-rs" }
+chrono = "0.4.24"
 axum = { version = "0.6.18", features = ["ws", "headers"] }
 axum-extra = "0.7.4"
 bytes = "1.4.0"
-chrono = "0.4.24"
 clap = { version = "4.2.7", features = ["derive", "string"] }
 futures = "0.3.28"
 futures-util = "0.3.28"
 headers = "0.3.8"
 mlua = { version = "0.8.9", features = ["lua54", "vendored", "async"] }
-onlyati_datastore = { git = "https://git.thinkaboutit.tech/PublicProjects/datastore-rs" }
 prost = "0.11.9"
 reqwest = "0.11.18"
 serde = { version = "1.0.163", features = ["derive"] }
@@ -36,4 +33,36 @@ rustyline = { version = "11.0.0", features = ["with-file-history"] }
 regex = "1.8.4"
 termion = "2.0.1"
 
-[build-dependencies]
+[package]
+name = "hermes"
+version = "1.0.0"
+edition = "2021"
+
+[[bin]]
+name = "hermes"
+path = "src/main.rs"
+
+[dependencies]
+onlyati_datastore = { workspace = true }
+axum = { workspace = true }
+axum-extra = { workspace = true }
+bytes = { workspace = true }
+clap = { workspace = true }
+futures = { workspace = true }
+futures-util = { workspace = true }
+headers = { workspace = true }
+mlua = { workspace = true }
+prost = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+url = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
+rustyline = { workspace = true }
+regex = { workspace = true }
+termion = { workspace = true }

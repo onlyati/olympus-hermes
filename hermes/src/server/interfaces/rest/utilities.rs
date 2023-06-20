@@ -14,7 +14,7 @@ use std::sync::RwLock;
 use std::sync::{mpsc::Sender, Arc, Mutex};
 
 // Internal depencies
-use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction, utilities};
+use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction};
 
 use crate::server::utilities::config_parse::Config;
 
@@ -111,7 +111,7 @@ async fn get_key(
     State(injected): State<InjectedData>,
     Query(parms): Query<KeyParm>,
 ) -> impl IntoResponse {
-    let (tx, rx) = utilities::get_channel_for_get();
+    let (tx, rx) = channel();
     let get_action = DatabaseAction::Get(tx, parms.key);
 
     send_data_request!(get_action, injected.data_sender);
@@ -146,7 +146,7 @@ async fn set_key(
     State(injected): State<InjectedData>,
     Json(pair): Json<Pair>,
 ) -> impl IntoResponse {
-    let (tx, rx) = utilities::get_channel_for_set();
+    let (tx, rx) = channel();
     let set_action = DatabaseAction::Set(tx, pair.key.clone(), pair.value);
 
     send_data_request!(set_action, injected.data_sender);
@@ -179,7 +179,7 @@ async fn delete_key(
     State(injected): State<InjectedData>,
     Query(parms): Query<DeleteParm>,
 ) -> impl IntoResponse {
-    let (tx, rx) = utilities::get_channel_for_delete();
+    let (tx, rx) = channel();
 
     let action = match parms.kind {
         Some(kind) => match kind.as_str() {
@@ -222,7 +222,7 @@ async fn list_keys(
     State(injected): State<InjectedData>,
     Query(parms): Query<KeyParm>,
 ) -> impl IntoResponse {
-    let (tx, rx) = utilities::get_channel_for_list();
+    let (tx, rx) = channel();
     let list_action = DatabaseAction::ListKeys(
         tx,
         parms.key,
@@ -261,7 +261,7 @@ async fn trigger(
     State(injected): State<InjectedData>,
     Json(pair): Json<Pair>,
 ) -> impl IntoResponse {
-    let (tx, rx) = utilities::get_channel_for_set();
+    let (tx, rx) = channel();
     let trigger_action = DatabaseAction::Trigger(tx, pair.key.clone(), pair.value);
 
     send_data_request!(trigger_action, injected.data_sender);
@@ -488,7 +488,7 @@ async fn exec_script(
     Json(arg): Json<ExecArg>,
 ) -> impl IntoResponse {
     // Get the old value of exists
-    let (tx, rx) = utilities::get_channel_for_get();
+    let (tx, rx) = channel();
     let get_action = DatabaseAction::Get(tx, arg.key.clone());
 
     send_data_request!(get_action, injected.data_sender);
@@ -533,7 +533,7 @@ async fn exec_script(
     // Make a SET action for the modified pair
     if exec.save {
         if modified_pair.1.is_empty() {
-            let (tx, rx) = utilities::get_channel_for_delete();
+            let (tx, rx) = channel();
 
             let action = DatabaseAction::DeleteKey(tx, modified_pair.0);
             send_data_request!(action, injected.data_sender);
