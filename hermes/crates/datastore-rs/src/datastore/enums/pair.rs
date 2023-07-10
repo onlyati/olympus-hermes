@@ -4,7 +4,7 @@ use std::fmt::Display;
 ///
 /// Key type that database accept, it can be record or another table
 ///
-#[derive(Eq, PartialOrd, Ord, Debug, Clone, Hash)]
+#[derive(Eq, PartialOrd, Ord, Debug, Clone)]
 pub enum KeyType {
     /// Value will be a pointer to another table
     Table(String),

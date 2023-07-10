@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 /// Represent a general table in config toml file
-/// 
+///
 /// # Example
 /// ```
 /// database_name = "hermes1"     # Name of database, this is the root for each key
@@ -138,11 +138,8 @@ pub fn parse_config(config_path: &String) -> Result<Config, String> {
 
     if let Some(logger) = &config.logger {
         tracing::info!("- logger.location: {}", logger.location);
-    }
-    else {
-        if config.general.logging {
-            return Err("parameter mem_only is true but no logger location defined".to_string());
-        }
+    } else if config.general.logging {
+        return Err("parameter mem_only is true but no logger location defined".to_string());
     }
 
     // If there are scripts for EXEC endpoint then display its settings

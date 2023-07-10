@@ -71,7 +71,7 @@ impl LoggerManager {
         let log_dir = Path::new(&path);
         if !log_dir.exists() {
             tracing::info!("logger directory does not exist, try to create");
-            match std::fs::create_dir_all(&log_dir) {
+            match std::fs::create_dir_all(log_dir) {
                 Ok(_) => tracing::info!("logger directory '{}' successfully created", path),
                 Err(e) => panic!("{}", e),
             }

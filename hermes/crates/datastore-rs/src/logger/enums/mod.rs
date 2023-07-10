@@ -24,23 +24,23 @@ pub enum LogItem {
 
 impl LogItem {
     pub fn needs_to_log(&self) -> bool {
-        match &self {
-            Self::SetKey(_, _, _) => true,
-            Self::RemKey(_, _) => true,
-            Self::RemPath(_, _) => true,
-            Self::SetHook(_, _, _) => true,
-            Self::RemHook(_, _, _) => true,
-            Self::Push(_, _, _) => true,
-            Self::Pop(_, _) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Self::SetKey(_, _, _)
+                | Self::RemKey(_, _)
+                | Self::RemPath(_, _)
+                | Self::SetHook(_, _, _)
+                | Self::RemHook(_, _, _)
+                | Self::Push(_, _, _)
+                | Self::Pop(_, _)
+        )
     }
 
     pub fn is_rem_hook(&self) -> bool {
         matches!(&self, Self::RemHook(_, _, _))
     }
 
-    pub fn get_key<'a>(&'a self) -> Option<KeyType> {
+    pub fn get_key(&self) -> Option<KeyType> {
         match &self {
             Self::SetKey(_, key, _) => Some(KeyType::Record(key.to_string())),
             Self::RemKey(_, key) => Some(KeyType::Record(key.to_string())),
@@ -53,7 +53,7 @@ impl LogItem {
         }
     }
 
-    pub fn get_value<'a>(&'a self) -> &str {
+    pub fn get_value(&self) -> &str {
         match &self {
             Self::SetKey(_, _, value) => value,
             Self::SetHook(_, _, value) => value,
