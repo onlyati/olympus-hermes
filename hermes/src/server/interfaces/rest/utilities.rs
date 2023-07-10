@@ -93,6 +93,16 @@ pub struct ExecParm {
     save: bool,
 }
 
+/// Struct is used to query the SET endpoint
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ListKey {
+    /// Type of the entry
+    r#type: String,
+
+    /// Key for record
+    key: String,
+}
+
 /// Endpoint to get value of a key
 ///
 /// # Http parameters:
@@ -235,8 +245,11 @@ async fn list_keys(
         Some(response) => match response {
             Ok(list) => return_ok_with_value!(list
                 .iter()
-                .map(|x| x.get_key().to_string())
-                .collect::<Vec<String>>()),
+                .map(|x| ListKey {
+                    r#type: x.get_type().to_string(),
+                    key: x.get_key().to_string()
+                })
+                .collect::<Vec<ListKey>>()),
             Err(e) => return_client_error!(e.to_string()),
         },
         None => return_server_error!("failed to get response from server"),

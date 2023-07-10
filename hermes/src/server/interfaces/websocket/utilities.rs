@@ -151,6 +151,8 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     Ok(list) => {
                         let mut data = String::new();
                         for key in list {
+                            data += key.get_type();
+                            data += " ";
                             data += key.get_key();
                             data += "\n";
                         }

@@ -173,6 +173,8 @@ async fn handle_command(
                     Ok(list) => {
                         let mut data = String::new();
                         for key in list {
+                            data += key.get_type();
+                            data += " ";
                             data += key.get_key();
                             data += "\n";
                         }
