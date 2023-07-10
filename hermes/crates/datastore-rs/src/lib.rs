@@ -41,7 +41,7 @@
 //! # tokio_test::block_on(async {
 //!
 //! let (hook_sender, _) = start_hook_manager().await;
-//! let (logger_sender, _) = start_logger(Some("/tmp/tmp-datastore-log.txt".to_string())).await;
+//! let (logger_sender, _) = start_logger(&"/tmp/tmp-datastore-log.txt".to_string()).await;
 //!
 //! // Start a new database with active hook manager
 //! let (sender, _) = start_datastore(

@@ -1,3 +1,7 @@
+[general]
+database_name = "hermes1"     # Name of database, this is the root for each key
+logging = true                # Logging into a file to keep persistency or just use in-memory
+
 [network]
 classic = "127.0.0.1:3031"     # Classic TCP interface bind to this address
 rest = "127.0.0.1:3032"        # REST interface bind to this address
@@ -18,4 +22,4 @@ execs = []
 [gitea]
 enable = false
 # script = "gitea_parser.lua"
-# key_base = "/root/gitea"
+# key_base = "/hermes1/gitea"

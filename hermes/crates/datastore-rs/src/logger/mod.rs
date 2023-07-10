@@ -28,7 +28,7 @@ pub mod utilities;
 /// let path = "/tmp/datastore-log-temp".to_string();
 /// let _ = std::fs::remove_dir_all(&path);
 /// std::fs::create_dir_all(&path).expect("failed to delete directory");
-/// let mut logger = LoggerManager::new(Some(path));
+/// let mut logger = LoggerManager::new(path);
 /// ```
 ///
 /// For more details check `src/tests/logger.rs` file.
@@ -58,28 +58,31 @@ impl LoggerManager {
     /// # Arguments
     /// 1. `path`: File location where the logger file is written
     ///
+    /// # Panic
+    /// 
+    /// If the log directory does not exist and not able to create
+    /// 
     /// # Return
     ///
     /// Witha LoggerManager struct.
-    pub fn new(path: Option<String>) -> Self {
+    pub fn new(path: String) -> Self {
         tracing::trace!("allocate new log manager with '{:?}' path", path);
 
-        if let Some(path) = path {
-            Self {
-                path,
-                state: LogState::Close,
-                human_log_file: None,
-                buffer: Vec::new(),
-                write_buffer: VecDeque::new(),
+        let log_dir = Path::new(&path);
+        if !log_dir.exists() {
+            tracing::info!("logger directory does not exist, try to create");
+            match std::fs::create_dir_all(&log_dir) {
+                Ok(_) => tracing::info!("logger directory '{}' successfully created", path),
+                Err(e) => panic!("{}", e),
             }
-        } else {
-            Self {
-                path: String::new(),
-                state: LogState::Close,
-                human_log_file: None,
-                buffer: Vec::new(),
-                write_buffer: VecDeque::new(),
-            }
+        }
+
+        Self {
+            path: path.clone(),
+            state: LogState::Close,
+            human_log_file: None,
+            buffer: Vec::new(),
+            write_buffer: VecDeque::new(),
         }
     }
 

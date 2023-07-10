@@ -22,20 +22,20 @@ Hermes bascially has three separated interfaces and a CLI:
 Any command can be executed on any interface, for example:
 ```bash
 # Using the simple TCP interface
-$ echo -n "GET /root/status" | socat - tcp:127.0.0.1:3030
+$ echo -n "GET /hermes1/status" | socat - tcp:127.0.0.1:3030
 >Ok
 running
 
 # Using via command line utility
-$ hermes cli -H ws://127.0.0.1:3034 get --key "/root/status"
+$ hermes cli -H ws://127.0.0.1:3034 get --key "/hermes1/status"
 running
 
 # Using the REST API via cURL
-$ curl "127.0.0.1:3032/db?key=/root/status"
+$ curl "127.0.0.1:3032/db?key=/hermes1/status"
 "running"
 
 # Using websocket
-$ wscat -c "127.0.0.1:3033/ws" -x '{ "command" : "GetKey", "key" : "/root/status" }'
+$ wscat -c "127.0.0.1:3033/ws" -x '{ "command" : "GetKey", "key" : "/hermes1/status" }'
 {"status":"Ok","message":"running"}
 ```
 
@@ -46,20 +46,20 @@ hermes@disconnected=> \l
 dev                 ws://127.0.0.1:3043
 test                ws://127.0.0.1:3033
 hermes@disconnected=> \c cfg://test
-hermes@ws://127.0.0.1:3033=> list-keys -k /root
-/root/status/proxy
-/root/status/server1
-/root/status/server2
-/root/status/server3
-/root/status/server4
-/root/test1
-/root/test2
+hermes@ws://127.0.0.1:3033=> list-keys -k /hermes1
+/hermes1/status/proxy
+/hermes1/status/server1
+/hermes1/status/server2
+/hermes1/status/server3
+/hermes1/status/server4
+/hermes1/test1
+/hermes1/test2
 hermes@ws://127.0.0.1:3033=> \c cfg://dev
-hermes@ws://127.0.0.1:3043=> list-keys -k /root
-/root/ati/hooks/status1
-/root/ati/test
-/root/ati/test-script
-/root/status/server1
+hermes@ws://127.0.0.1:3043=> list-keys -k /hermes1
+/hermes1/ati/hooks/status1
+/hermes1/ati/test
+/hermes1/ati/test-script
+/hermes1/status/server1
 hermes@ws://127.0.0.1:3043=> \d
 hermes@disconnected=> \q
 ```

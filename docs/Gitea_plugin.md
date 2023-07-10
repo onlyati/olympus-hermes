@@ -10,20 +10,8 @@ Hermes can have enabled endpoint to receive and optionally parse [Gitea hooks](h
 ## Configuration file
 
 To work with this, configuration file must work correctly. the `[script]` and `[gitea]` part must be defined.
-Sample conmfiguration file:
+Sample Gitea related parts from configuration file:
 ```t
-[network]
-classic = "0.0.0.0:3031"     # Classic TCP interface bind to this address
-rest = "0.0.0.0:3032"        # REST interface bind to this address
-websocket = "0.0.0.0:3033"   # REST interface bind to this address
-
-[initials]
-# Records and hooks will be read from here during startup
-path = "/usr/var/hermes/init.toml"
-
-[logger]
-location = "/usr/var/hermes/log.txt" # Which file should the database log written
-
 [scripts]
 lib_path = "/usr/var/hermes/lua/libs"  # Additional location where Lua looking for libraries
 exec_path = "/usr/var/hermes/lua"      # Hermes looking gitea.script file in this directory
@@ -57,3 +45,5 @@ end
 
 _G.new["key"] = _G.new["key"] .. "/" .. t[3] .. "/" .. t[4] .. "/" .. t[5] .. "-" .. t[6]
 ```
+
+**Attention:** Example above using a json library that is in place in 'scripts.lib_path' settings.

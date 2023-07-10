@@ -57,14 +57,19 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
 
     // Initialize HookManager and Logger for Datastore)
     let (hook_sender, hook_thread) = onlyati_datastore::hook::utilities::start_hook_manager().await;
-    let (logger_sender, logger_thread) =
-        onlyati_datastore::logger::utilities::start_logger(config.logger.location).await;
+    let (logger_sender, logger_thread) = if config.general.logging {
+        let path = config.logger.unwrap().location;
+        let (a, b) = onlyati_datastore::logger::utilities::start_logger(&path).await;
+        (Some(a), b)
+    } else {
+        (None, tokio::spawn(async move {}))
+    };
 
     // Initialize Datastore
     let (sender, db_thread) = onlyati_datastore::datastore::utilities::start_datastore(
-        "root".to_string(),
+        config.general.database_name,
         Some(hook_sender),
-        Some(logger_sender),
+        logger_sender,
     )
     .await;
 
@@ -89,10 +94,12 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
         "Datastore".to_string(),
     );
 
-    handler.register_interface(
-        Box::new(Dummy::new(Some(logger_thread))),
-        "Logger".to_string(),
-    );
+    if config.general.logging {
+        handler.register_interface(
+            Box::new(Dummy::new(Some(logger_thread))),
+            "Logger".to_string(),
+        );
+    }
 
     // Register classic interface
     if let Some(addr) = &config.network.classic {

@@ -1,5 +1,18 @@
 use serde::Deserialize;
 
+/// Represent a general table in config toml file
+/// 
+/// # Example
+/// ```
+/// database_name = "hermes1"     # Name of database, this is the root for each key
+/// logging = true                # Logging into a file to keep persistency or just use in-memory
+/// ```
+#[derive(Deserialize, Clone, Debug, Default)]
+pub struct General {
+    pub database_name: String,
+    pub logging: bool,
+}
+
 /// Represent a network table in config toml file
 ///
 /// # Example:
@@ -38,8 +51,7 @@ pub struct Initials {
 /// ```
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Logger {
-    pub mem_only: bool,
-    pub location: Option<String>,
+    pub location: String,
 }
 
 /// Represent a scripts table in config toml file
@@ -82,9 +94,10 @@ pub struct Gitea {
 /// Represent the whole config.toml file
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Config {
+    pub general: General,
     pub network: Network,
     pub initials: Initials,
-    pub logger: Logger,
+    pub logger: Option<Logger>,
     pub scripts: Option<Scripts>,
     pub gitea: Option<Gitea>,
 }
@@ -116,16 +129,18 @@ pub fn parse_config(config_path: &String) -> Result<Config, String> {
 
     // Write out the config items
     tracing::info!("Config settings:");
+    tracing::info!("- general.database_name: {}", config.general.database_name);
+    tracing::info!("- general.logging: {}", config.general.logging);
     tracing::info!("- network.classic: {:?}", config.network.classic);
     tracing::info!("- network.rest: {:?}", config.network.rest);
     tracing::info!("- network.websocket: {:?}", config.network.websocket);
     tracing::info!("- initials.path: {}", config.initials.path);
-    tracing::info!("- logger.mem_only: {}", config.logger.mem_only);
 
-    if !config.logger.mem_only {
-        if let Some(location) = &config.logger.location {
-            tracing::info!("- logger.location: {}", location);
-        } else {
+    if let Some(logger) = &config.logger {
+        tracing::info!("- logger.location: {}", logger.location);
+    }
+    else {
+        if config.general.logging {
             return Err("parameter mem_only is true but no logger location defined".to_string());
         }
     }

@@ -84,7 +84,7 @@ impl Database {
     /// # Examples
     /// ```
     /// # tokio_test::block_on(async {
-    /// let (sender, _) = onlyati_datastore::logger::utilities::start_logger(Some("/tmp/datastore-tmp.txt".to_string())).await;
+    /// let (sender, _) = onlyati_datastore::logger::utilities::start_logger(&"/tmp/datastore-tmp.txt".to_string()).await;
     /// let mut db = onlyati_datastore::datastore::Database::new("root".to_string()).unwrap();
     /// db.subscribe_to_logger(sender);
     /// # })

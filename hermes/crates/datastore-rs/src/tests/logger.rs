@@ -19,7 +19,7 @@ mod test {
 
         let placeholder_date = std::time::Duration::from_secs(5);
 
-        let mut manager = LoggerManager::new(Some(path));
+        let mut manager = LoggerManager::new(path);
 
         let result = manager.start(false);
         assert_eq!(true, result.is_ok());
@@ -51,7 +51,7 @@ mod test {
         let placeholder_date = std::time::Duration::from_secs(5);
 
         // Start logger and write a line
-        let mut manager = LoggerManager::new(Some(path.clone()));
+        let mut manager = LoggerManager::new(path.clone());
 
         let result = manager.start(false);
         assert_eq!(true, result.is_ok());
@@ -125,7 +125,7 @@ mod test {
 
             let placeholder_date = std::time::Duration::from_secs(5);
 
-            let (sender, _) = start_logger(Some(path)).await;
+            let (sender, _) = start_logger(&path).await;
 
             let action = LoggerAction::WriteAsync(vec![LogItem::SetKey(
                 placeholder_date,
@@ -177,7 +177,7 @@ mod test {
 
             let human_log = format!("{}/human.log", path);
 
-            let (logger_sender, _) = start_logger(Some(path)).await;
+            let (logger_sender, _) = start_logger(&path).await;
             let (sender, _) = start_datastore("root".to_string(), None, Some(logger_sender)).await;
 
             let (tx, mut rx) = channel(10);
@@ -280,7 +280,7 @@ mod test {
                 LogItem::SetKey(placeholder_date, "/root/test2".to_string(), "placeholder value".to_string())
             ];
 
-            let (logger_sender, _) = start_logger(Some(path)).await;
+            let (logger_sender, _) = start_logger(&path).await;
 
             let (tx, mut rx) = channel(10);
             let action = LoggerAction::Write(tx, etalon.clone());

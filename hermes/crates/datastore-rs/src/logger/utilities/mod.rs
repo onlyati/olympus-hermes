@@ -18,7 +18,7 @@ use super::{
 /// # Return
 ///
 /// With the thread handler and sender that can communicate with logger.
-pub async fn start_logger(path: Option<String>) -> (Sender<LoggerAction>, JoinHandle<()>) {
+pub async fn start_logger(path: &String) -> (Sender<LoggerAction>, JoinHandle<()>) {
     let (tx, mut rx) = channel::<LoggerAction>(60000);
 
     let path = path.to_owned();
