@@ -11,12 +11,10 @@ use axum::{
     routing::get,
     Router,
 };
-use onlyati_datastore::datastore::enums::ListType;
 use std::borrow::Cow;
 use std::net::SocketAddr;
-use std::sync::mpsc::channel;
-use std::sync::RwLock;
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::{mpsc::channel, mpsc::Sender, Mutex, RwLock};
 use tower_http::trace::DefaultMakeSpan;
 use tower_http::trace::TraceLayer;
 
@@ -24,7 +22,9 @@ use tower_http::trace::TraceLayer;
 use super::macros::{send_data_back, send_data_request, verify_one_item, verify_two_items};
 use crate::common::websocket::{CommandMethod, WsRequest, WsResponse};
 use crate::server::utilities::config_parse::Config;
-use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction};
+use onlyati_datastore::datastore::{
+    enums::pair::ValueType, enums::DatabaseAction, enums::ListType,
+};
 
 /// Struct that is injected into every endpoint
 #[derive(Clone)]
@@ -54,22 +54,20 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
         CommandMethod::GetKey => {
             let key = verify_one_item!(req.key, "'key' must be specified");
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::Get(tx, key);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(value) => match value {
                         ValueType::RecordPointer(data) => WsResponse::new_ok(data),
                         _ => WsResponse::new_err("Pointer must be Record but it was Table"),
                     },
                     Err(e) => WsResponse::new_err(e.to_string()),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -81,19 +79,17 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             let (key, value) =
                 verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::Set(tx, key, value);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => WsResponse::new_ok(""),
                     Err(e) => WsResponse::new_err(e),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -104,19 +100,17 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
         CommandMethod::RemKey => {
             let key = verify_one_item!(req.key, "'key' must be specified");
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::DeleteKey(tx, key);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => WsResponse::new_ok(""),
                     Err(e) => WsResponse::new_err(e),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -127,19 +121,17 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
         CommandMethod::RemPath => {
             let key = verify_one_item!(req.key, "'key' must be specified");
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::DeleteTable(tx, key);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => WsResponse::new_ok(""),
                     Err(e) => WsResponse::new_err(e),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -150,12 +142,12 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
         CommandMethod::ListKeys => {
             let key = verify_one_item!(req.key, "'key' must be specified");
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::ListKeys(tx, key, ListType::All);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(list) => {
                         let mut data = String::new();
                         for key in list {
@@ -166,10 +158,8 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     }
                     Err(e) => WsResponse::new_err(e),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -181,19 +171,17 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             let (key, value) =
                 verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::Trigger(tx, key, value);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => WsResponse::new_ok(""),
                     Err(e) => WsResponse::new_err(e),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -204,12 +192,12 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
         CommandMethod::GetHook => {
             let prefix = verify_one_item!(req.prefix, "'prefix' must be specified");
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::HookGet(tx, prefix);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok((_prefix, links)) => {
                         let mut response = String::new();
                         for link in links {
@@ -220,10 +208,8 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     }
                     Err(e) => WsResponse::new_err(e),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -238,19 +224,17 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 "'prefix' and 'link' must be specified"
             );
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::HookSet(tx, prefix, link);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => WsResponse::new_ok(""),
                     Err(e) => WsResponse::new_err(e),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -265,19 +249,17 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 "'prefix' and 'link' must be specified"
             );
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::HookRemove(tx, prefix, link);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => WsResponse::new_ok(""),
                     Err(e) => WsResponse::new_err(e),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -288,12 +270,12 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
         CommandMethod::ListHooks => {
             let prefix = verify_one_item!(req.prefix, "'prefix' must be specified");
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::HookList(tx, prefix);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(hooks) => {
                         let mut response = String::new();
                         for (prefix, links) in hooks {
@@ -303,10 +285,8 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     }
                     Err(e) => WsResponse::new_err(e),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -315,19 +295,17 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
         // Suspend log
         //
         CommandMethod::SuspendLog => {
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::SuspendLog(tx);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => WsResponse::new_ok(""),
                     Err(e) => WsResponse::new_err(e),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -336,19 +314,17 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
         // Resume log
         //
         CommandMethod::ResumeLog => {
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::ResumeLog(tx);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => WsResponse::new_ok(""),
                     Err(e) => WsResponse::new_err(e),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -363,13 +339,13 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                 verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
 
             // Get the old value of the keys
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let get_action = DatabaseAction::Get(tx, key.clone());
 
             send_data_request!(get_action, injected.data_sender);
 
-            let old_pair = match rx.recv() {
-                Ok(response) => match response {
+            let old_pair = match rx.recv().await {
+                Some(response) => match response {
                     Ok(value) => match value {
                         ValueType::RecordPointer(data) => Some((key.clone(), data)),
                         _ => {
@@ -379,26 +355,21 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
                     },
                     Err(_) => None,
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     return WsResponse::new_err("internal server error");
                 }
             };
 
             // Get config
-            let config = match injected.config.read() {
-                Ok(cfg) => match &cfg.scripts {
+            let config = {
+                let config = injected.config.read().await;
+                match &config.scripts {
                     Some(scr) => match scr.execs.contains(&script) {
                         true => scr.clone(),
                         false => return WsResponse::new_err("requested script is not defined"),
                     },
                     None => return WsResponse::new_err("requested script is not defined"),
-                },
-                Err(_) => {
-                    tracing::error!("RwLock for config has poisned");
-                    panic!("RwLock for config has poisned");
                 }
             };
 
@@ -422,37 +393,47 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             // Make a SET action for the modified pair
             if save {
                 if modified_pair.1.is_empty() {
-                    let (tx, rx) = channel();
+                    tracing::debug!("value is empty so delete the key");
+                    let (tx, mut rx) = channel(10);
 
                     let action = DatabaseAction::DeleteKey(tx, modified_pair.0);
                     send_data_request!(action, injected.data_sender);
 
-                    match rx.recv() {
-                        Ok(response) => match response {
-                            Ok(_) => WsResponse::new_ok(""),
-                            Err(e) => WsResponse::new_err(e),
-                        },
-                        Err(e) => {
-                            for line in e.to_string().lines() {
-                                tracing::error!("{}", line);
+                    match rx.recv().await {
+                        Some(response) => match response {
+                            Ok(_) => {
+                                tracing::debug!("key successufully deleted");
+                                WsResponse::new_ok("")
                             }
+                            Err(e) => {
+                                tracing::debug!("failed to delete the key: {}", e);
+                                WsResponse::new_err(e)
+                            }
+                        },
+                        None => {
+                            tracing::error!("failed to receive from database");
                             WsResponse::new_err("internal server error")
                         }
                     }
                 } else {
-                    let (tx, rx) = channel();
+                    tracing::debug!("value is specified so set the key");
+                    let (tx, mut rx) = channel(10);
                     let action = DatabaseAction::Set(tx, modified_pair.0, modified_pair.1);
                     send_data_request!(action, injected.data_sender);
 
-                    match rx.recv() {
-                        Ok(response) => match response {
-                            Ok(_) => WsResponse::new_ok(""),
-                            Err(e) => WsResponse::new_err(e),
-                        },
-                        Err(e) => {
-                            for line in e.to_string().lines() {
-                                tracing::error!("{}", line);
+                    match rx.recv().await {
+                        Some(response) => match response {
+                            Ok(_) => {
+                                tracing::debug!("key successfully saved");
+                                WsResponse::new_ok("")
                             }
+                            Err(e) => {
+                                tracing::debug!("failed to save key: {}", e);
+                                WsResponse::new_err(e)
+                            }
+                        },
+                        None => {
+                            tracing::error!("failed to receive from database");
                             WsResponse::new_err("internal server error")
                         }
                     }
@@ -460,19 +441,24 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             }
             // Or a TRIGGER if this was requested
             else if !modified_pair.1.is_empty() {
-                let (tx, rx) = channel();
+                tracing::debug!("it is just a trigger");
+                let (tx, mut rx) = channel(10);
                 let action = DatabaseAction::Trigger(tx, modified_pair.0, modified_pair.1);
                 send_data_request!(action, injected.data_sender);
 
-                match rx.recv() {
-                    Ok(response) => match response {
-                        Ok(_) => WsResponse::new_ok(""),
-                        Err(e) => WsResponse::new_err(e),
-                    },
-                    Err(e) => {
-                        for line in e.to_string().lines() {
-                            tracing::error!("{}", line);
+                match rx.recv().await {
+                    Some(response) => match response {
+                        Ok(_) => {
+                            tracing::debug!("trigger successfully set");
+                            WsResponse::new_ok("")
                         }
+                        Err(e) => {
+                            tracing::debug!("failed to set trigger: {}", e);
+                            WsResponse::new_err(e)
+                        }
+                    },
+                    None => {
+                        tracing::error!("failed to receive from database");
                         WsResponse::new_err("internal server error")
                     }
                 }
@@ -487,19 +473,17 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
             let (key, value) =
                 verify_two_items!(req.key, req.value, "'key' and 'value' must be specified");
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::Push(tx, key, value);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => WsResponse::new_ok(""),
                     Err(e) => WsResponse::new_err(e),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }
@@ -510,22 +494,20 @@ async fn handle_request(req: WsRequest, injected: &InjectedData) -> WsResponse {
         CommandMethod::Pop => {
             let key = verify_one_item!(req.key, "'key' must be specified");
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::Pop(tx, key);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(value) => match value {
                         ValueType::RecordPointer(data) => WsResponse::new_ok(data),
                         _ => WsResponse::new_err("Pointer must be Record but it was Table"),
                     },
                     Err(e) => WsResponse::new_err(e.to_string()),
                 },
-                Err(e) => {
-                    for line in e.to_string().lines() {
-                        tracing::error!("{}", line);
-                    }
+                None => {
+                    tracing::error!("failed to receive from database");
                     WsResponse::new_err("internal server error")
                 }
             }

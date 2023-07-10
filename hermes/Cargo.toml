@@ -4,10 +4,11 @@ edition = "2021"
 repository = "https://git.thinkaboutit.tech/PublicProjects/olympus-hermes"
 
 [workspace]
-members = ["datastore-rs"]
+members = ["crates/datastore-rs"]
 
 [workspace.dependencies]
-onlyati_datastore = { path = "./datastore-rs" }
+onlyati_datastore = { path = "./crates/datastore-rs" }
+bincode = { version = "1.3.3", features = ["i128"] }
 chrono = "0.4.24"
 axum = { version = "0.6.18", features = ["ws", "headers"] }
 axum-extra = "0.7.4"
@@ -17,12 +18,12 @@ futures = "0.3.28"
 futures-util = "0.3.28"
 headers = "0.3.8"
 mlua = { version = "0.8.9", features = ["lua54", "vendored", "async"] }
-prost = "0.11.9"
 reqwest = "0.11.18"
 serde = { version = "1.0.163", features = ["derive"] }
 serde_json = "1.0.96"
 toml = "0.7.4"
 tokio = { version = "1.28.1", features = ["macros", "rt-multi-thread", "fs", "sync", "time", "process", "signal"] }
+tokio-test = "0.4.2"
 tower = { version = "0.4.13", features = ["util", "timeout"] }
 tower-http = { version = "0.4.0", features = ["add-extension", "trace", "cors", "timeout"] }
 tracing = "0.1.37"
@@ -52,7 +53,6 @@ futures = { workspace = true }
 futures-util = { workspace = true }
 headers = { workspace = true }
 mlua = { workspace = true }
-prost = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }

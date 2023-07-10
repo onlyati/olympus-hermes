@@ -1,6 +1,6 @@
-use std::sync::RwLock;
 // External dependencies
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::{mpsc::Sender, Mutex, RwLock};
 use tokio::task::JoinHandle;
 
 use crate::server::utilities::config_parse::Config;

@@ -1,4 +1,4 @@
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::Sender;
 use std::collections::BTreeMap;
 
 use super::types::{Hooks, Key, Link, Prefix, Value};
@@ -20,6 +20,9 @@ pub enum HookManagerAction {
 
     /// Send data to defined hooks
     Send(Key, Value),
+
+    /// Enable or disable hook manager
+    Enable(Sender<HookManagerResponse>, bool),
 }
 
 #[derive(Debug, Eq, PartialEq)]

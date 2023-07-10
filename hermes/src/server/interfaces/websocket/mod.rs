@@ -1,6 +1,6 @@
 // External dependencies
-use std::sync::RwLock;
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::{mpsc::Sender, RwLock, Mutex};
 use tokio::task::JoinHandle;
 
 // Internal dependencies

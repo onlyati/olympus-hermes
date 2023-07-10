@@ -8,7 +8,8 @@ websocket = "127.0.0.1:3033"   # Websocket interface bind to this address
 path = "/home/ati/work/OnlyAti.Hermes/hermes/init_data.toml"
 
 [logger]
-location = "/tmp/hermes-datastore-test.txt" # Which file should the database log written
+mem_only = false
+location = "/tmp/hermes-datastore-test" # Directory for logs
 
 [scripts]
 lib_path = "./lua-examples/libs"

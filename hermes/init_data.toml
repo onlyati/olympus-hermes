@@ -1,6 +1,7 @@
 [[record]]
 key = "/root/test1"
-value = "This is         value"
+value = "This is a value"
+override = true
 
 [[record]]
 key = "/root/test2"

@@ -1,4 +1,4 @@
-FROM rust:latest as builder
+FROM rust:bookworm as builder
 
 RUN apt-get update && \
     apt-get install -y protobuf-compiler
@@ -10,16 +10,16 @@ WORKDIR /rust-docker
 RUN rm src/*.rs
 COPY ./src ./src
 COPY ./Cargo.toml ./Cargo.toml
-COPY ./datastore-rs ./datastore-rs
+COPY ./crates ./crates
 
 RUN cargo update \
     && cargo build --release
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 ARG APP=/usr/local/bin
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates tzdata coreutils locales curl && \
+    apt-get install -y ca-certificates tzdata coreutils locales curl libssl-dev && \
     rm -rf /var/lib/apt/lists/*
 
 EXPOSE 3031

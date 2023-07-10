@@ -2,7 +2,14 @@ pub mod config_parse;
 pub mod initial_parse;
 pub mod lua;
 
-/// Read a file content
+/// Check that file exists, then return with its contant.
+/// 
+/// # Parameters
+/// - `path`: File that must be read
+/// 
+/// # Return
+/// 
+/// With file content, or with the error text.
 fn get_file_content(path: &String) -> Result<String, String> {
     let path = std::path::Path::new(path);
     match path.exists() {

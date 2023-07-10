@@ -1,5 +1,5 @@
 // External dependencies
-use std::thread::JoinHandle;
+use tokio::task::JoinHandle;
 
 // Internal depenencies
 use super::ApplicationInterface;

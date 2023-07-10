@@ -1,4 +1,5 @@
-hermes/docker/var/log.txt
+hermes/docker/var/hermes.af
+hermes/docker/var/human.log
 */target
 stress
 

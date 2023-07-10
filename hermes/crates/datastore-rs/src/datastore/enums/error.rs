@@ -17,6 +17,9 @@ pub enum ErrorKind {
 
     /// Send log errors back
     LogError(String),
+
+    /// Replication errors
+    ReplicationError(String),
 }
 
 impl std::fmt::Display for ErrorKind {
@@ -27,6 +30,7 @@ impl std::fmt::Display for ErrorKind {
             Self::InternalError(message) => format!("Internal error: {message}"),
             Self::InactiveHookManager => "Inacvite hook manager: database is not subscried".to_string(),
             Self::LogError(message) => format!("LogError: {}", message),
+            Self::ReplicationError(message) => format!("ReplicationError: {}", message),
         };
         write!(f, "{}", response)
     }

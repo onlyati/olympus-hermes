@@ -36,35 +36,42 @@
 //! };
 //! use onlyati_datastore::hook::utilities::start_hook_manager;
 //! use onlyati_datastore::logger::utilities::start_logger;
-//! use std::sync::mpsc::channel;
+//! use tokio::sync::mpsc::channel;
+//! 
+//! # tokio_test::block_on(async {
 //!
-//! let (hook_sender, _) = start_hook_manager();
-//! let (logger_sender, _) = start_logger(&"/tmp/tmp-datastore-log.txt".to_string());
+//! let (hook_sender, _) = start_hook_manager().await;
+//! let (logger_sender, _) = start_logger(Some("/tmp/tmp-datastore-log.txt".to_string())).await;
 //!
 //! // Start a new database with active hook manager
-//! let (sender, _) = start_datastore("root".to_string(), Some(hook_sender), Some(logger_sender));
+//! let (sender, _) = start_datastore(
+//!     "root".to_string(), 
+//!     Some(hook_sender), 
+//!     Some(logger_sender))
+//!     .await;
 //!
 //! // Send a POST request to specified address when records updated within /root/status
-//! let (tx, rx) = channel();
+//! let (tx, mut rx) = channel(10);
 //! let action = DatabaseAction::HookSet(tx, "/root/network".to_string(), "http://127.0.0.1:3031".to_string());
-//! sender.send(action).expect("Failed to send hook request");
+//! sender.send(action).await.expect("Failed to send hook request");
 //!
-//! rx.recv().expect("Failed to received response").expect("Bad request");
+//! rx.recv().await.expect("Failed to received response").expect("Bad request");
 //!
 //! // Add a new pair
-//! let (tx, rx) = channel();
+//! let (tx, mut rx) = channel(10);
 //! let set_action = DatabaseAction::Set(tx, "/root/network/server1".to_string(), "ok".to_string());
 //!
-//! sender.send(set_action).expect("Failed to send the request");
-//! rx.recv().unwrap().unwrap();
+//! sender.send(set_action).await.expect("Failed to send the request");
+//! rx.recv().await.unwrap().unwrap();
 //!
 //! // Get the pair
-//! let (tx, rx) = channel();
+//! let (tx, mut rx) = channel(10);
 //! let get_action = DatabaseAction::Get(tx, "/root/network/server1".to_string());
 //!
-//! sender.send(get_action).expect("Failed to send the get request");
-//! let data = rx.recv().expect("Failed to receive message").expect("Failed to get data");
+//! sender.send(get_action).await.expect("Failed to send the get request");
+//! let data = rx.recv().await.expect("Failed to receive message").expect("Failed to get data");
 //! assert_eq!(ValueType::RecordPointer("ok".to_string()), data);
+//! # })
 //! ```
 //!
 //! ## Sample code to run without built-in thread server
@@ -76,6 +83,7 @@
 //! use onlyati_datastore::datastore::Database;
 //! use onlyati_datastore::datastore::enums::{pair::KeyType, pair::ValueType, ListType};
 //!
+//! # tokio_test::block_on(async {
 //! let mut db = Database::new("root".to_string()).unwrap();
 //!
 //! let list: Vec<(KeyType, ValueType)> = vec![
@@ -86,11 +94,12 @@
 //! ];
 //!
 //! for (key, value) in list {
-//!     db.insert(key, value).expect("Failed to insert");
+//!     db.insert(key, value).await.expect("Failed to insert");
 //! }
 //!
 //! let full_list = db.list_keys(KeyType::Record("/root".to_string()), ListType::All).expect("Failed to get all keys");
 //! assert_eq!(true, full_list.len() == 4);
+//! # })
 //! ```
 #![allow(dead_code)]
 
@@ -98,3 +107,4 @@ pub mod datastore;
 pub mod hook;
 pub mod logger;
 mod tests;
+

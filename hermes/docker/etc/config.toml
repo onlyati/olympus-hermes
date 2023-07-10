@@ -8,7 +8,8 @@ websocket = "0.0.0.0:3033"   # REST interface bind to this address
 path = "/usr/var/hermes/init.toml"
 
 [logger]
-location = "/usr/var/hermes/log.txt" # Which file should the database log written
+mem_only = false
+location = "/usr/var/hermes" # Directory for logging
 
 [scripts]
 lib_path = "/usr/var/hermes/lua/libs"

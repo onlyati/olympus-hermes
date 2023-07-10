@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::Arc;
+use tokio::sync::{Mutex, RwLock};
 
 mod interfaces;
 mod utilities;
@@ -6,17 +7,17 @@ mod utilities;
 use interfaces::classic::Classic;
 use interfaces::dummy::Dummy;
 use interfaces::rest::Rest;
+use interfaces::websocket::Websocket;
 use interfaces::ApplicationInterface;
 use interfaces::InterfaceHandler;
-use interfaces::websocket::Websocket;
 
 /// Main entrypoint when Hermes run as a server
-/// 
+///
 /// # Parameters
 /// - `args`: Command arguments that has been parse bly `clap`.
-/// 
+///
 /// # Details
-/// 
+///
 /// This function start the server by the following stpes:
 /// 1. Initialize tracer
 /// 1. Read configuration that path has been passed as argument
@@ -24,9 +25,9 @@ use interfaces::websocket::Websocket;
 /// 1. Register interfaces that has been enabled in the configueration file
 /// 1. Register handler for interrupt and terminate signals (for graceful shutdown)
 /// 1. Start registered interfaces and if any of them fails, then stop the application
-/// 
+///
 /// # Return
-/// 
+///
 /// This function return with a code normally. If something error would occure then with the error itself.
 pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>> {
     // Read environment variable and set trace accordingly, default is Level::ERROR
@@ -54,21 +55,24 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
     };
     let config_arc = Arc::new(RwLock::new(config.clone()));
 
-    // Initialize HookManager and Logger for Datastore
-    let (hook_sender, hook_thread) = onlyati_datastore::hook::utilities::start_hook_manager();
+    // Initialize HookManager and Logger for Datastore)
+    let (hook_sender, hook_thread) = onlyati_datastore::hook::utilities::start_hook_manager().await;
     let (logger_sender, logger_thread) =
-        onlyati_datastore::logger::utilities::start_logger(&config.logger.location);
+        onlyati_datastore::logger::utilities::start_logger(config.logger.location).await;
 
     // Initialize Datastore
     let (sender, db_thread) = onlyati_datastore::datastore::utilities::start_datastore(
         "root".to_string(),
         Some(hook_sender),
         Some(logger_sender),
-    );
+    )
+    .await;
 
     // Parse the input data for database and hooks too
     utilities::initial_parse::parse_initial_file(&config.initials.path, &sender)
+        .await
         .unwrap_or_else(|x| panic!("{}", x));
+
     let sender = Arc::new(Mutex::new(sender));
 
     // Create interface handler
@@ -119,7 +123,7 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
 
     // Start interfaces and watch them
     handler.start();
-    
+
     // Register signal actions for termination
     tracing::debug!("register signal for termination (ctrl+c)");
     let mut terminate =
@@ -158,4 +162,3 @@ pub async fn main_async(args: String) -> Result<i32, Box<dyn std::error::Error>>
         }
     }
 }
-

@@ -1,6 +1,6 @@
 //! Main component
-
-use std::{collections::VecDeque, sync::mpsc::Sender};
+use std::collections::VecDeque;
+use tokio::sync::mpsc::Sender;
 
 pub mod enums;
 pub mod types;
@@ -65,9 +65,11 @@ impl Database {
     ///
     /// # Examples
     /// ```
-    /// let (sender, _) = onlyati_datastore::hook::utilities::start_hook_manager();
+    /// # tokio_test::block_on(async {
+    /// let (sender, _) = onlyati_datastore::hook::utilities::start_hook_manager().await;
     /// let mut db = onlyati_datastore::datastore::Database::new("root".to_string()).unwrap();
     /// db.subscribe_to_hook_manager(sender);
+    /// # })
     /// ```
     pub fn subscribe_to_hook_manager(&mut self, sender: Sender<HookManagerAction>) {
         tracing::trace!("subscribe to hook manager");
@@ -81,9 +83,11 @@ impl Database {
     ///
     /// # Examples
     /// ```
-    /// let (sender, _) = onlyati_datastore::logger::utilities::start_logger(&"/tmp/datastore-tmp.txt".to_string());
+    /// # tokio_test::block_on(async {
+    /// let (sender, _) = onlyati_datastore::logger::utilities::start_logger(Some("/tmp/datastore-tmp.txt".to_string())).await;
     /// let mut db = onlyati_datastore::datastore::Database::new("root".to_string()).unwrap();
     /// db.subscribe_to_logger(sender);
+    /// # })
     /// ```
     pub fn subscribe_to_logger(&mut self, sender: Sender<LoggerAction>) {
         tracing::trace!("subscribe to logger");
@@ -102,15 +106,24 @@ impl Database {
     /// use onlyati_datastore::datastore::Database;
     /// use onlyati_datastore::datastore::enums::pair::{KeyType, ValueType};
     ///
+    /// # tokio_test::block_on(async {
     /// let mut db = Database::new("root".to_string()).unwrap();
     ///
-    /// let result = db.insert(KeyType::Record("/root/network/dns-stats".to_string()), ValueType::RecordPointer("ok".to_string()));
+    /// let result = db.insert(KeyType::Record("/root/network/dns-stats".to_string()), ValueType::RecordPointer("ok".to_string())).await;
+    /// # })
     /// ```
-    pub fn insert(&mut self, key: KeyType, value: ValueType) -> Result<(), ErrorKind> {
+    pub async fn insert(
+        &mut self,
+        key: KeyType,
+        value: ValueType,
+    ) -> Result<(), ErrorKind> {
         tracing::trace!("set request is performed for '{}'", key.get_key());
 
+        // Validate the specified key
         let key_routes = utilities::internal::validate_key(key.get_key(), &self.name)?;
 
+        // Find the last table or create them according to request
+        // For example if key is /root/status/vps01/github then create or find root->status->vps01 table
         let mut table = Box::new(&mut self.root);
         let last_route = key_routes[key_routes.len() - 1];
         let mut route_index: usize = 0;
@@ -144,10 +157,12 @@ impl Database {
             current_route = key_routes[route_index].to_string();
         }
 
+        // In the found table, save the key
         let record_key = KeyType::Record(last_route.to_string());
         table.insert(record_key, value.clone());
         tracing::trace!("set request is done for '{}'", key.get_key());
 
+        // If hook manager exists, then send the pair to hook manager
         if let Some(sender) = &self.hook_sender {
             tracing::trace!("send alert to hook manager about '{}' key", key.get_key());
             if let ValueType::RecordPointer(value) = &value {
@@ -155,6 +170,7 @@ impl Database {
 
                 sender
                     .send(action)
+                    .await
                     .unwrap_or_else(|e| tracing::error!("Error during send: {}", e));
             }
         }
@@ -173,13 +189,21 @@ impl Database {
     /// use onlyati_datastore::datastore::Database;
     /// use onlyati_datastore::datastore::enums::pair::{KeyType, ValueType};
     ///
+    /// # tokio_test::block_on(async {
     /// let mut db = Database::new("root".to_string()).unwrap();
     ///
-    /// let result = db.push(KeyType::Record("/root/ticket/open".to_string()), "SINC100".to_string()).expect("Failed to push");
-    /// let result = db.push(KeyType::Record("/root/ticket/open".to_string()), "SINC101".to_string()).expect("Failed to push");
+    /// let result = db.push(KeyType::Record("/root/ticket/open".to_string()), "SINC100".to_string()).await.expect("Failed to push");
+    /// let result = db.push(KeyType::Record("/root/ticket/open".to_string()), "SINC101".to_string()).await.expect("Failed to push");
+    /// # })
     /// ```
-    pub fn push(&mut self, key: KeyType, value: String) -> Result<(), ErrorKind> {
+    pub async fn push(
+        &mut self,
+        key: KeyType,
+        value: String,
+    ) -> Result<(), ErrorKind> {
         tracing::trace!("push request is performed for '{}'", key.get_key());
+
+        // Verify and validate key value
         let key = match key {
             KeyType::Record(key) => key,
             _ => {
@@ -191,6 +215,8 @@ impl Database {
 
         let key_routes = utilities::internal::validate_key(&key[..], &self.name)?;
 
+        // Find the last table or create them according to request
+        // For example if key is /root/status/vps01/github then create or find root->status->vps01 table
         let mut table = Box::new(&mut self.root);
         let last_route = key_routes[key_routes.len() - 1];
         let mut route_index: usize = 0;
@@ -224,33 +250,54 @@ impl Database {
             current_route = key_routes[route_index].to_string();
         }
 
+        // If table has been found, then we have to check that record exists.
+        // If exists then get it as mutable and add new element into the queue.
+        // Else create a new record with the specified key and value in a queue.
         match table.get_mut(&KeyType::Queue(last_route.to_string())) {
-            Some(elem) => match elem {
-                ValueType::QueuePointer(queue) => {
-                    queue.push_back(value.clone());
-                    tracing::trace!("push request is done for '{}'", key);
+            Some(elem) => {
+                match elem {
+                    ValueType::QueuePointer(queue) => {
+                        // Queue key was already exist, add value to existing queue
+                        queue.push_back(value.clone());
+                        tracing::trace!("push request is done for '{}'", key);
 
-                    if let Some(sender) = &self.hook_sender {
-                        tracing::trace!("send alert to hook manager about '{}' key", key);
-                        let action = HookManagerAction::Send(key, value);
+                        // Send data to hook manager if active
+                        if let Some(sender) = &self.hook_sender {
+                            tracing::trace!("send alert to hook manager about '{}' key", key);
+                            let action = HookManagerAction::Send(key, value);
 
-                        sender
-                            .send(action)
-                            .unwrap_or_else(|e| tracing::error!("Error during send: {}", e));
+                            sender
+                                .send(action)
+                                .await
+                                .unwrap_or_else(|e| tracing::error!("Error during send: {}", e));
+                        }
+                    }
+                    _ => {
+                        // Since we are within a get_mut this branch should never run
+                        tracing::trace!("queue '{}' does not exist", key);
+                        return Err(ErrorKind::InvalidKey(
+                            "Specified key does not exist".to_string(),
+                        ));
                     }
                 }
-                _ => {
-                    tracing::trace!("queue '{}' does not exist", key);
-                    return Err(ErrorKind::InvalidKey(
-                        "Specified key does not exist".to_string(),
-                    ));
-                }
-            },
+            }
             None => {
+                // Queue key does not exist yet, create a new one
                 let new_qeue = KeyType::Queue(last_route.to_string());
                 let mut queue = VecDeque::new();
-                queue.push_back(value);
+                queue.push_back(value.clone());
                 table.insert(new_qeue, ValueType::QueuePointer(queue));
+
+                // Send data to hook manager if active
+                if let Some(sender) = &self.hook_sender {
+                    tracing::trace!("send alert to hook manager about '{}' key", key);
+                    let action = HookManagerAction::Send(key, value);
+
+                    sender
+                        .send(action)
+                        .await
+                        .unwrap_or_else(|e| tracing::error!("Error during send: {}", e));
+                }
             }
         }
 
@@ -270,11 +317,13 @@ impl Database {
     /// use onlyati_datastore::datastore::Database;
     /// use onlyati_datastore::datastore::enums::pair::{KeyType, ValueType};
     ///
+    /// # tokio_test::block_on(async {
     /// let mut db = Database::new("root".to_string()).unwrap();
     ///
-    /// let result = db.trigger(KeyType::Record("/root/network/dns-stats".to_string()), ValueType::RecordPointer("ok".to_string()));
+    /// let result = db.trigger(KeyType::Record("/root/network/dns-stats".to_string()), ValueType::RecordPointer("ok".to_string())).await;
+    /// # })
     /// ```
-    pub fn trigger(&self, key: KeyType, value: ValueType) -> Result<(), ErrorKind> {
+    pub async fn trigger(&self, key: KeyType, value: ValueType) -> Result<(), ErrorKind> {
         match &self.hook_sender {
             Some(sender) => {
                 tracing::trace!("send trigger to hook manager about '{}' key", key.get_key());
@@ -284,6 +333,7 @@ impl Database {
 
                     sender
                         .send(action)
+                        .await
                         .unwrap_or_else(|e| tracing::error!("Error during send: {}", e));
                 }
                 Ok(())
@@ -303,13 +353,17 @@ impl Database {
     /// use onlyati_datastore::datastore::Database;
     /// use onlyati_datastore::datastore::enums::pair::{KeyType, ValueType};
     ///
+    /// # tokio_test::block_on(async {
     /// let mut db = Database::new("root".to_string()).unwrap();
     ///
-    /// db.insert(KeyType::Record("/root/status".to_string()), ValueType::RecordPointer("Having a great time".to_string())).expect("Failed to insert");
+    /// db.insert(KeyType::Record("/root/status".to_string()), ValueType::RecordPointer("Having a great time".to_string())).await.expect("Failed to insert");
     /// let value = db.get(KeyType::Record("/root/status".to_string())).expect("Key not found");
+    /// # })
     /// ```
     pub fn get(&self, key: KeyType) -> Result<ValueType, ErrorKind> {
         tracing::trace!("get request is performed for '{}'", key.get_key());
+
+        // Verify and validate the key
         let key = match key {
             KeyType::Record(key) => key,
             _ => {
@@ -320,6 +374,9 @@ impl Database {
         };
 
         let key_routes = utilities::internal::validate_key(&key[..], &self.name)?;
+
+        // Try to find the last table where the key can be found
+        // For example if key is /root/test/status then root->test table must be found, else return with a not found error
         let table = match utilities::internal::find_table(
             &self.root,
             key_routes[..key_routes.len() - 1].to_vec(),
@@ -335,6 +392,8 @@ impl Database {
 
         let find_key = KeyType::Record(key_routes[key_routes.len() - 1].to_string());
 
+        // Last table has been found, check that key exist within it
+        // If exists return with this, else with a not found error
         match table.get(&find_key) {
             Some(value) => {
                 tracing::trace!("get request is done for '{}'", key);
@@ -360,22 +419,26 @@ impl Database {
     /// use onlyati_datastore::datastore::Database;
     /// use onlyati_datastore::datastore::enums::pair::{KeyType, ValueType};
     ///
+    /// # tokio_test::block_on(async {
     /// let mut db = Database::new("root".to_string()).unwrap();
     ///
-    /// let result = db.push(KeyType::Record("/root/ticket/open".to_string()), "SINC100".to_string()).expect("Failed to push");
-    /// let result = db.push(KeyType::Record("/root/ticket/open".to_string()), "SINC101".to_string()).expect("Failed to push");
+    /// let result = db.push(KeyType::Record("/root/ticket/open".to_string()), "SINC100".to_string()).await.expect("Failed to push");
+    /// let result = db.push(KeyType::Record("/root/ticket/open".to_string()), "SINC101".to_string()).await.expect("Failed to push");
     ///
-    /// let ticket = db.pop(KeyType::Record("/root/ticket/open".to_string())).expect("Failed to pop");
+    /// let ticket = db.pop(KeyType::Record("/root/ticket/open".to_string())).await.expect("Failed to pop");
     /// assert_eq!("SINC100".to_string(), ticket);
     ///
-    /// let ticket = db.pop(KeyType::Record("/root/ticket/open".to_string())).expect("Failed to pop");
+    /// let ticket = db.pop(KeyType::Record("/root/ticket/open".to_string())).await.expect("Failed to pop");
     /// assert_eq!("SINC101".to_string(), ticket);
     ///
-    /// let ticket = db.pop(KeyType::Record("/root/ticket/open".to_string()));
+    /// let ticket = db.pop(KeyType::Record("/root/ticket/open".to_string())).await;
     /// assert_eq!(true, ticket.is_err());
+    /// # })
     /// ```
-    pub fn pop(&mut self, key: KeyType) -> Result<String, ErrorKind> {
+    pub async fn pop(&mut self, key: KeyType) -> Result<String, ErrorKind> {
         tracing::trace!("get request is performed for '{}'", key.get_key());
+
+        // Validate and verify the key
         let key = match key {
             KeyType::Record(key) => key,
             _ => {
@@ -386,6 +449,9 @@ impl Database {
         };
 
         let key_routes = utilities::internal::validate_key(&key[..], &self.name)?;
+
+        // Try to find the last table where the key can be found
+        // For example if key is /root/test/status then root->test table must be found, else return with a not found error
         let table = match utilities::internal::find_table_mut(
             &mut self.root,
             key_routes[..key_routes.len() - 1].to_vec(),
@@ -401,6 +467,8 @@ impl Database {
 
         let find_key = KeyType::Queue(key_routes[key_routes.len() - 1].to_string());
 
+        // Try to find the key in the last table. If key exists, then remove the first element from
+        // the queue, then return with this. Else return with a not found error.
         match table.get_mut(&find_key) {
             Some(value) => {
                 tracing::trace!("get request is done for '{}'", key);
@@ -452,14 +520,16 @@ impl Database {
     /// use onlyati_datastore::datastore::Database;
     /// use onlyati_datastore::datastore::enums::{pair::KeyType, pair::ValueType, ListType};
     ///
+    /// # tokio_test::block_on(async {
     /// let mut db = Database::new("root".to_string()).unwrap();
     ///
-    /// db.insert(KeyType::Record("/root/status/sub1".to_string()), ValueType::RecordPointer("PING OK".to_string())).expect("Failed to insert");
-    /// db.insert(KeyType::Record("/root/status/sub2".to_string()), ValueType::RecordPointer("PING NOK".to_string())).expect("Failed to insert");
-    /// db.insert(KeyType::Record("/root/status/sub3".to_string()), ValueType::RecordPointer("PING OK".to_string())).expect("Failed to insert");
+    /// db.insert(KeyType::Record("/root/status/sub1".to_string()), ValueType::RecordPointer("PING OK".to_string())).await.expect("Failed to insert");
+    /// db.insert(KeyType::Record("/root/status/sub2".to_string()), ValueType::RecordPointer("PING NOK".to_string())).await.expect("Failed to insert");
+    /// db.insert(KeyType::Record("/root/status/sub3".to_string()), ValueType::RecordPointer("PING OK".to_string())).await.expect("Failed to insert");
     /// let list = db.list_keys(KeyType::Record("/root/status".to_string()), ListType::All).expect("Key not found");
     ///
     /// println!("{:?}", list);
+    /// # })
     /// ```
     pub fn list_keys(
         &mut self,
@@ -491,7 +561,7 @@ impl Database {
             }
         };
 
-        // Get the information
+        // Fetch the keys from the spcified table and return with them
         let result = utilities::internal::display_tables(table, &key_prefix, &level)?;
 
         tracing::trace!("list keys request is done for '{}'", key_prefix);
@@ -509,14 +579,18 @@ impl Database {
     /// use onlyati_datastore::datastore::Database;
     /// use onlyati_datastore::datastore::enums::pair::{KeyType, ValueType};
     ///
+    /// # tokio_test::block_on(async {
     /// let mut db = Database::new("root".to_string()).unwrap();
     ///
     /// let key = KeyType::Record("/root/status".to_string());
-    /// db.insert(key.clone(), ValueType::RecordPointer("Having a great time".to_string())).expect("Failed to insert");
-    /// db.delete_key(key).expect("Could not delete the key");
+    /// db.insert(key.clone(), ValueType::RecordPointer("Having a great time".to_string())).await.expect("Failed to insert");
+    /// db.delete_key(key).await.expect("Could not delete the key");
+    /// # })
     /// ```
-    pub fn delete_key(&mut self, key: KeyType) -> Result<(), ErrorKind> {
+    pub async fn delete_key(&mut self, key: KeyType) -> Result<(), ErrorKind> {
         tracing::trace!("delete key request is performed for '{}'", key.get_key());
+
+        // Validate and verify the key
         if let KeyType::Table(_) = key {
             tracing::trace!("delete request is failed due to wrong key type");
             return Err(ErrorKind::InvalidKey(
@@ -525,6 +599,9 @@ impl Database {
         }
 
         let key_routes = utilities::internal::validate_key(key.get_key(), &self.name)?;
+
+        // Try to find the last table where the key can be found
+        // For example if key is /root/test/status then root->test table must be found, else return with a not found error
         let table = match utilities::internal::find_table_mut(
             &mut self.root,
             key_routes[..key_routes.len() - 1].to_vec(),
@@ -543,9 +620,11 @@ impl Database {
 
         let delete_key = KeyType::Record(key_routes[key_routes.len() - 1].to_string());
 
+        // Try to delete the key, if it would fail, e.g.: does not exist, then return with error
         match table.remove(&delete_key) {
             Some(_) => {
                 tracing::trace!("delete request is done for '{}'", key.get_key());
+
                 Ok(())
             }
             None => {
@@ -571,21 +650,25 @@ impl Database {
     /// use onlyati_datastore::datastore::Database;
     /// use onlyati_datastore::datastore::enums::{pair::KeyType, pair::ValueType, ListType};
     ///
+    /// # tokio_test::block_on(async {
     /// let mut db = Database::new("root".to_string()).unwrap();
     ///
-    /// db.insert(KeyType::Record("/root/status/sub1".to_string()), ValueType::RecordPointer("PING OK".to_string())).expect("Failed to insert");
-    /// db.insert(KeyType::Record("/root/status/sub2".to_string()), ValueType::RecordPointer("PING NOK".to_string())).expect("Failed to insert");
-    /// db.insert(KeyType::Record("/root/status/sub3".to_string()), ValueType::RecordPointer("PING OK".to_string())).expect("Failed to insert");
-    /// db.insert(KeyType::Record("/root/node_name".to_string()), ValueType::RecordPointer("vps01".to_string())).expect("Failed to insert");
+    /// db.insert(KeyType::Record("/root/status/sub1".to_string()), ValueType::RecordPointer("PING OK".to_string())).await.expect("Failed to insert");
+    /// db.insert(KeyType::Record("/root/status/sub2".to_string()), ValueType::RecordPointer("PING NOK".to_string())).await.expect("Failed to insert");
+    /// db.insert(KeyType::Record("/root/status/sub3".to_string()), ValueType::RecordPointer("PING OK".to_string())).await.expect("Failed to insert");
+    /// db.insert(KeyType::Record("/root/node_name".to_string()), ValueType::RecordPointer("vps01".to_string())).await.expect("Failed to insert");
     ///
-    /// db.delete_table(KeyType::Table("/root/status".to_string())).expect("Failed to drop from status table");
+    /// db.delete_table(KeyType::Table("/root/status".to_string())).await.expect("Failed to drop from status table");
     ///
     /// // Only "node_name" remain in the list
     /// let list = db.list_keys(KeyType::Record("/root".to_string()), ListType::All).expect("Key not found");
     /// println!("{:?}", list);
+    /// # })
     /// ```
-    pub fn delete_table(&mut self, key: KeyType) -> Result<(), ErrorKind> {
+    pub async fn delete_table(&mut self, key: KeyType) -> Result<(), ErrorKind> {
         tracing::trace!("delete table request is performed for '{}'", key.get_key());
+
+        // Validate and verify the key
         if let KeyType::Record(_) = key {
             tracing::trace!("delete table request is failed due to wrong key type is specified");
             return Err(ErrorKind::InvalidKey(
@@ -594,6 +677,9 @@ impl Database {
         }
 
         let key_routes = utilities::internal::validate_key(key.get_key(), &self.name)?;
+
+        // Try to find the last table where the key can be found
+        // For example if key is /root/test/status then root->test table must be found, else return with a not found error
         let table = match utilities::internal::find_table_mut(
             &mut self.root,
             key_routes[..key_routes.len() - 1].to_vec(),
@@ -612,9 +698,11 @@ impl Database {
 
         let delete_key = KeyType::Table(key_routes[key_routes.len() - 1].to_string());
 
+        // Try to delete the key, if it would fail, e.g.: does not exist, then return with error
         match table.remove(&delete_key) {
             Some(_) => {
                 tracing::trace!("delete table request is performed for '{}'", key.get_key());
+
                 Ok(())
             }
             None => {

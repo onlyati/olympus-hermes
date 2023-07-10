@@ -1,5 +1,6 @@
 // External depencies
-use std::sync::{mpsc::Sender, Arc, Mutex, RwLock};
+use std::sync::Arc;
+use tokio::sync::{mpsc::Sender, Mutex, RwLock};
 use tokio::task::JoinHandle;
 
 use crate::server::utilities::config_parse::Config;
@@ -28,7 +29,7 @@ pub struct Rest {
 
 impl Rest {
     /// Create new interface
-    /// 
+    ///
     /// # Parmeters
     /// - `data_sender`: Sender to send data to database thread
     /// - `address`: Host address where the interface bind and listen

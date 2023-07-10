@@ -5,7 +5,7 @@ use crate::hook::types::{Link, Prefix};
 use super::types::{
     ResultWithHook, ResultWithHooks, ResultWithList, ResultWithResult, ResultWithoutResult, Table,
 };
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc::Sender;
 
 pub mod error;
 pub mod pair;
@@ -13,7 +13,7 @@ pub mod pair;
 ///
 /// Specifiy the level for listing key function
 ///
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum ListType {
     /// List only the current level
     OneLevel,
@@ -35,6 +35,7 @@ impl std::fmt::Display for ListType {
 ///
 /// Actions for built-in server
 ///
+#[derive(Debug)]
 pub enum DatabaseAction {
     /// Set or update a key-value pair
     Set(Sender<ResultWithoutResult>, String, String),

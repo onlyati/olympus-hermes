@@ -9,9 +9,9 @@ use axum::{
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use std::sync::mpsc::channel;
-use std::sync::RwLock;
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::mpsc::channel;
+use tokio::sync::{mpsc::Sender, Mutex, RwLock};
 
 // Internal depencies
 use onlyati_datastore::datastore::{enums::pair::ValueType, enums::DatabaseAction};
@@ -111,20 +111,20 @@ async fn get_key(
     State(injected): State<InjectedData>,
     Query(parms): Query<KeyParm>,
 ) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let get_action = DatabaseAction::Get(tx, parms.key);
 
     send_data_request!(get_action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(value) => match value {
                 ValueType::RecordPointer(data) => return_ok_with_value!(data),
                 _ => return_server_error!("Pointer must be Record but it was Table"),
             },
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -146,17 +146,17 @@ async fn set_key(
     State(injected): State<InjectedData>,
     Json(pair): Json<Pair>,
 ) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let set_action = DatabaseAction::Set(tx, pair.key.clone(), pair.value);
 
     send_data_request!(set_action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(_) => return_ok!(),
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -179,7 +179,7 @@ async fn delete_key(
     State(injected): State<InjectedData>,
     Query(parms): Query<DeleteParm>,
 ) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
 
     let action = match parms.kind {
         Some(kind) => match kind.as_str() {
@@ -195,12 +195,12 @@ async fn delete_key(
 
     send_data_request!(action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(_) => return_ok!(),
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -222,7 +222,7 @@ async fn list_keys(
     State(injected): State<InjectedData>,
     Query(parms): Query<KeyParm>,
 ) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let list_action = DatabaseAction::ListKeys(
         tx,
         parms.key,
@@ -231,15 +231,15 @@ async fn list_keys(
 
     send_data_request!(list_action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(list) => return_ok_with_value!(list
                 .iter()
                 .map(|x| x.get_key().to_string())
                 .collect::<Vec<String>>()),
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -261,17 +261,17 @@ async fn trigger(
     State(injected): State<InjectedData>,
     Json(pair): Json<Pair>,
 ) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let trigger_action = DatabaseAction::Trigger(tx, pair.key.clone(), pair.value);
 
     send_data_request!(trigger_action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(_) => return_ok!(),
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -293,16 +293,16 @@ async fn set_hook(
     State(injected): State<InjectedData>,
     Json(pair): Json<Pair>,
 ) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let action = DatabaseAction::HookSet(tx, pair.key, pair.value);
     send_data_request!(action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(_) => return_ok!(),
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -324,18 +324,18 @@ async fn get_hook(
     State(injected): State<InjectedData>,
     Query(key): Query<KeyParm>,
 ) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let action = DatabaseAction::HookGet(tx, key.key);
     send_data_request!(action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok((prefix, links)) => {
                 return_ok_with_value!(Hook { prefix, links });
             }
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -357,16 +357,16 @@ async fn delete_hook(
     State(injected): State<InjectedData>,
     Query(pair): Query<Pair>,
 ) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let action = DatabaseAction::HookRemove(tx, pair.key, pair.value);
     send_data_request!(action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(_) => return_ok!(),
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -388,12 +388,12 @@ async fn list_hooks(
     State(injected): State<InjectedData>,
     Query(key): Query<KeyParm>,
 ) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let action = DatabaseAction::HookList(tx, key.key);
     send_data_request!(action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(hooks) => {
                 let mut collection: Vec<Hook> = Vec::new();
 
@@ -405,7 +405,7 @@ async fn list_hooks(
             }
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -424,17 +424,17 @@ async fn list_hooks(
 /// - `BAD_REQUEST`: Something was specified badly in the request
 /// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn suspend_log(State(injected): State<InjectedData>) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let action = DatabaseAction::SuspendLog(tx);
 
     send_data_request!(action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(_) => return_ok!(),
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -453,17 +453,17 @@ async fn suspend_log(State(injected): State<InjectedData>) -> impl IntoResponse 
 /// - `BAD_REQUEST`: Something was specified badly in the request
 /// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn resume_log(State(injected): State<InjectedData>) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let action = DatabaseAction::ResumeLog(tx);
 
     send_data_request!(action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(_) => return_ok!(),
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -488,34 +488,31 @@ async fn exec_script(
     Json(arg): Json<ExecArg>,
 ) -> impl IntoResponse {
     // Get the old value of exists
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let get_action = DatabaseAction::Get(tx, arg.key.clone());
 
     send_data_request!(get_action, injected.data_sender);
 
-    let old_pair = match rx.recv() {
-        Ok(response) => match response {
+    let old_pair = match rx.recv().await {
+        Some(response) => match response {
             Ok(value) => match value {
                 ValueType::RecordPointer(data) => Some((arg.key.clone(), data)),
                 _ => return_server_error!("Pointer must be Record but it was Table"),
             },
             Err(_) => None,
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     };
 
     // Get config
-    let config = match injected.config.read() {
-        Ok(cfg) => match &cfg.scripts {
+    let config = {
+        let config = injected.config.read().await;
+        match &config.scripts {
             Some(scr) => match scr.execs.contains(&exec.exec) {
                 true => scr.clone(),
                 false => return_client_error!("requested script is not defined"),
             },
             None => return_client_error!("requested script is not defined"),
-        },
-        Err(_) => {
-            tracing::error!("RwLock for config has poisned");
-            panic!("RwLock for config has poisned");
         }
     };
 
@@ -533,44 +530,44 @@ async fn exec_script(
     // Make a SET action for the modified pair
     if exec.save {
         if modified_pair.1.is_empty() {
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
 
             let action = DatabaseAction::DeleteKey(tx, modified_pair.0);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => return_ok!(),
                     Err(e) => return_client_error!(e.to_string()),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to get response from server"),
             }
         } else {
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::Set(tx, modified_pair.0, modified_pair.1);
             send_data_request!(action, injected.data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => return_ok!(),
                     Err(e) => return_client_error!(e.to_string()),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to get response from server"),
             }
         }
     }
     // Or a TRIGGER if this was requested
     else if !modified_pair.1.is_empty() {
-        let (tx, rx) = channel();
+        let (tx, mut rx) = channel(10);
         let action = DatabaseAction::Trigger(tx, modified_pair.0, modified_pair.1);
         send_data_request!(action, injected.data_sender);
 
-        match rx.recv() {
-            Ok(response) => match response {
+        match rx.recv().await {
+            Some(response) => match response {
                 Ok(_) => return_ok!(),
                 Err(e) => return_client_error!(e.to_string()),
             },
-            Err(e) => return_server_error!(e),
+            None => return_server_error!("failed to get response from server"),
         }
     } else {
         return_client_error!("After script was run, the new value is empty");
@@ -607,17 +604,17 @@ pub async fn health_check() -> impl IntoResponse {
 /// - `BAD_REQUEST`: Something was specified badly in the request
 /// - `INTERNAL_SERVER_ERROR`: Something issue happened on server
 async fn push(State(injected): State<InjectedData>, Json(pair): Json<Pair>) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let set_action = DatabaseAction::Push(tx, pair.key.clone(), pair.value);
 
     send_data_request!(set_action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(_) => return_ok!(),
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -639,20 +636,20 @@ async fn pop(
     State(injected): State<InjectedData>,
     Query(parms): Query<KeyParm>,
 ) -> impl IntoResponse {
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let get_action = DatabaseAction::Pop(tx, parms.key);
 
     send_data_request!(get_action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(value) => match value {
                 ValueType::RecordPointer(data) => return_ok_with_value!(data),
                 _ => return_server_error!("Pointer must be Record but it was Table"),
             },
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 
@@ -677,7 +674,7 @@ pub async fn gitea(
     // Get information from config
     let (script, prefix) = {
         // Deny if not enabled
-        let config = injected.config.read().unwrap();
+        let config = injected.config.read().await;
         match &config.gitea {
             Some(gitea) => {
                 if !gitea.enable {
@@ -728,17 +725,17 @@ pub async fn gitea(
     }
 
     // Save the generated key and value
-    let (tx, rx) = channel();
+    let (tx, mut rx) = channel(10);
     let set_action = DatabaseAction::Set(tx, key, value);
 
     send_data_request!(set_action, injected.data_sender);
 
-    match rx.recv() {
-        Ok(response) => match response {
+    match rx.recv().await {
+        Some(response) => match response {
             Ok(_) => return_ok!(),
             Err(e) => return_client_error!(e.to_string()),
         },
-        Err(e) => return_server_error!(e),
+        None => return_server_error!("failed to get response from server"),
     }
 }
 

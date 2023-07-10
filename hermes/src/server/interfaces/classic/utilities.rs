@@ -1,10 +1,9 @@
 // External dependencies
 use bytes::BytesMut;
-use std::sync::mpsc::channel;
-use std::sync::RwLock;
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
+use tokio::sync::{mpsc::channel, mpsc::Sender, Mutex, RwLock};
 
 // Internal dependencies
 use onlyati_datastore::datastore::enums::{pair::ValueType, DatabaseAction};
@@ -124,16 +123,16 @@ async fn handle_command(
             }
 
             // Handle SET request
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let set_action = DatabaseAction::Set(tx, key, value);
             send_data_request!(set_action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => return_ok!(),
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -141,19 +140,19 @@ async fn handle_command(
         //
         "GET" => {
             // Handle GET request
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let get_action = DatabaseAction::Get(tx, key);
             send_data_request!(get_action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(value) => match value {
                         ValueType::RecordPointer(data) => return_ok_with_value!(data),
                         _ => return_server_error!("Pointer must be Record but it was Table"),
                     },
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -161,7 +160,7 @@ async fn handle_command(
         //
         "LIST" => {
             // Handle LIST request
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let list_action = DatabaseAction::ListKeys(
                 tx,
                 key,
@@ -169,8 +168,8 @@ async fn handle_command(
             );
             send_data_request!(list_action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(list) => {
                         let mut data = String::new();
                         for key in list {
@@ -181,7 +180,7 @@ async fn handle_command(
                     }
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -195,16 +194,16 @@ async fn handle_command(
             }
 
             // Handle TRIGGER request
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let trigger_action = DatabaseAction::Trigger(tx, key, value);
             send_data_request!(trigger_action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => return_ok!(),
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -212,16 +211,16 @@ async fn handle_command(
         //
         "REMKEY" => {
             // Handle REMKEY request
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let rem_action = DatabaseAction::DeleteKey(tx, key);
             send_data_request!(rem_action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => return_ok!(),
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -229,16 +228,16 @@ async fn handle_command(
         //
         "REMPATH" => {
             // Handle REMPATH request
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let rem_action = DatabaseAction::DeleteTable(tx, key);
             send_data_request!(rem_action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => return_ok!(),
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -253,16 +252,16 @@ async fn handle_command(
             let prefix = key;
             let link = value;
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::HookSet(tx, prefix, link);
             send_data_request!(action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => return_ok!(),
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -271,12 +270,12 @@ async fn handle_command(
         "GETHOOK" => {
             // Get links for a hook
             let prefix = key;
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::HookGet(tx, prefix);
             send_data_request!(action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok((_prefix, links)) => {
                         let mut response = String::new();
                         for link in links {
@@ -287,7 +286,7 @@ async fn handle_command(
                     }
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -302,16 +301,16 @@ async fn handle_command(
             let prefix = key;
             let link = value;
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::HookRemove(tx, prefix, link);
             send_data_request!(action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => return_ok!(),
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -320,12 +319,12 @@ async fn handle_command(
         "LISTHOOKS" => {
             // List hooks based on a prefix
             let prefix = key;
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::HookList(tx, prefix);
             send_data_request!(action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(hooks) => {
                         let mut response = String::new();
                         for (prefix, links) in hooks {
@@ -335,7 +334,7 @@ async fn handle_command(
                     }
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -347,16 +346,16 @@ async fn handle_command(
                 return_client_error!("Invalid command, you may wanted to write: SUSPEND LOG");
             }
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::SuspendLog(tx);
             send_data_request!(action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => return_ok!(),
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -368,16 +367,16 @@ async fn handle_command(
                 return_client_error!("Invalid command, you may wanted to write: SUSPEND LOG");
             }
 
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let action = DatabaseAction::ResumeLog(tx);
             send_data_request!(action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => return_ok!(),
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -431,34 +430,31 @@ async fn handle_command(
             tracing::debug!("[{}]", real_value);
 
             // Get the old value of exists
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let get_action = DatabaseAction::Get(tx, key.clone());
 
             send_data_request!(get_action, data_sender);
 
-            let old_pair = match rx.recv() {
-                Ok(response) => match response {
+            let old_pair = match rx.recv().await {
+                Some(response) => match response {
                     Ok(value) => match value {
                         ValueType::RecordPointer(data) => Some((key.clone(), data)),
                         _ => return_server_error!("Pointer must be Record but it was Table"),
                     },
                     Err(_) => None,
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             };
 
             // Get config
-            let config = match config.read() {
-                Ok(cfg) => match &cfg.scripts {
+            let config = {
+                let config = config.read().await;
+                match &config.scripts {
                     Some(scr) => match scr.execs.contains(script) {
                         true => scr.clone(),
                         false => return_client_error!("requested script is not defined"),
                     },
                     None => return_client_error!("requested script is not defined"),
-                },
-                Err(_) => {
-                    tracing::error!("RwLock for config has poisned");
-                    panic!("RwLock for config has poisned");
                 }
             };
 
@@ -481,45 +477,45 @@ async fn handle_command(
             // Make a SET action for the modified pair
             if save == "SET" {
                 if modified_pair.1.is_empty() {
-                    let (tx, rx) = channel();
+                    let (tx, mut rx) = channel(10);
 
                     let action = DatabaseAction::DeleteKey(tx, modified_pair.0);
                     send_data_request!(action, data_sender);
 
-                    match rx.recv() {
-                        Ok(response) => match response {
+                    match rx.recv().await {
+                        Some(response) => match response {
                             Ok(_) => return_ok!(),
                             Err(e) => return_client_error!(e.to_string()),
                         },
-                        Err(e) => return_server_error!(e),
+                        None => return_server_error!("failed to receive message from database"),
                     }
                 } else {
-                    let (tx, rx) = channel();
+                    let (tx, mut rx) = channel(10);
                     let action = DatabaseAction::Set(tx, modified_pair.0, modified_pair.1);
                     send_data_request!(action, data_sender);
 
-                    match rx.recv() {
-                        Ok(response) => match response {
+                    match rx.recv().await {
+                        Some(response) => match response {
                             Ok(_) => return_ok!(),
                             Err(e) => return_client_error!(e.to_string()),
                         },
-                        Err(e) => return_server_error!(e),
+                        None => return_server_error!("failed to receive message from database"),
                     }
                 }
             }
             // Or a TRIGGER if this was requested
             else if save == "TRIGGER" {
                 if !modified_pair.1.is_empty() {
-                    let (tx, rx) = channel();
+                    let (tx, mut rx) = channel(10);
                     let action = DatabaseAction::Trigger(tx, modified_pair.0, modified_pair.1);
                     send_data_request!(action, data_sender);
 
-                    match rx.recv() {
-                        Ok(response) => match response {
+                    match rx.recv().await {
+                        Some(response) => match response {
                             Ok(_) => return_ok!(),
                             Err(e) => return_client_error!(e.to_string()),
                         },
-                        Err(e) => return_server_error!(e),
+                        None => return_server_error!("failed to receive message from database"),
                     }
                 } else {
                     return_client_error!("After script was run, the new value is empty");
@@ -539,16 +535,16 @@ async fn handle_command(
             }
 
             // Handle SET request
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let set_action = DatabaseAction::Push(tx, key, value);
             send_data_request!(set_action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(_) => return_ok!(),
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         //
@@ -556,19 +552,19 @@ async fn handle_command(
         //
         "POP" => {
             // Handle GET request
-            let (tx, rx) = channel();
+            let (tx, mut rx) = channel(10);
             let get_action = DatabaseAction::Pop(tx, key);
             send_data_request!(get_action, data_sender);
 
-            match rx.recv() {
-                Ok(response) => match response {
+            match rx.recv().await {
+                Some(response) => match response {
                     Ok(value) => match value {
                         ValueType::RecordPointer(data) => return_ok_with_value!(data),
                         _ => return_server_error!("Pointer must be Record but it was Table"),
                     },
                     Err(e) => return_client_error!(e),
                 },
-                Err(e) => return_server_error!(e),
+                None => return_server_error!("failed to receive message from database"),
             }
         }
         _ => unreachable!(),
