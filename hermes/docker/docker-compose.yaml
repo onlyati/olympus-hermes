@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   hermes:
-    image: hermes:latest
+    image: registry.thinkaboutit.tech/onlyati/hermes:1.1
     container_name: hermes_test
     environment:
       - HERMES_LOG=info
@@ -11,4 +11,4 @@ services:
       - ./var:/usr/var/hermes
       - ./etc:/etc/olympus/hermes
     ports:
-      - 3030-3032:3030-3032
+      - 3031-3033:3031-3033

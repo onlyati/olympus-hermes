@@ -5,13 +5,14 @@
 Document has some major parts, they are discussing:
 - [Actions](Actions.md)
 - [Configuration](Configuration.md)
-- [Command link interface](CommandLine.md)
+- [Command link interface](Command_line.md)
 - [Stored procedures](Stored_procedures.md)
 
 Following documents describes each interface parameters:
 - [Classic TCP interface](Interface_classic.md)
-- [gRPC interface](Interface_gRPC.md)
 - [REST interface](Interface_REST.md)
+  - [Gitea plugin](Gitea_plugin.md)
+- [Websocket interface](Interface_websocket.md)
 
 As Hermes is inteded to run on back-end server among other APIs and components, and not available directly from front-end applications. For this reason, all interfaces are unsecured to available more speed as possible. If, for some reason, any of these interfaces would be avaiable from front-end, it is handy to put it behind a proxy (e.g.: HAProxy) and setup security there.
 
@@ -30,7 +31,7 @@ Log levels:
 
 ## Docker install
 
-Easiest way to install Hermes is using docker, pull the image by `docker pull onlyati/hermes` and based on [docker-compose](../hermes/docker/docker-compose.yaml) it can be started easily.
+Easiest way to install Hermes is using docker, pull the image by `docker pull onlyati/hermes` and based on [docker-compose.yaml](../hermes/docker/docker-compose.yaml) it can be started easily.
 
 ## Build and use Hermes on your own
 
@@ -47,10 +48,10 @@ $ git clone https://git.thinkaboutit.tech/PublicProjects/olympus-hermes
 $ cd olympus-hermes/hermes
 $ docker build -t hermes:latest .
 $ cd docker
-$ docker-compose up -d
+$ docker compose up -d
 ```
 
-Before execute `docker-compose up -d` command it is **strongly recommended** to check the config file!
+Before execute `docker compose up -d` command it is **strongly recommended** to check the config file!
 
 After these commands a container, called hermes_test, is started. Logs can be checked by `docker logs hermes_test` command.
 Execute CLI commands can be done via docker command, some example:

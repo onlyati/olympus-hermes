@@ -1,6 +1,5 @@
 {
     "rust-analyzer.linkedProjects": [
         "./hermes/Cargo.toml",
-    ],
-    "rust-analyzer.showUnlinkedFileNotification": false
+    ]
 }

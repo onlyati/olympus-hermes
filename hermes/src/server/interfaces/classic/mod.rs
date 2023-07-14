@@ -1,6 +1,6 @@
-use std::sync::RwLock;
 // External dependencies
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::{mpsc::Sender, Mutex, RwLock};
 use tokio::task::JoinHandle;
 
 use crate::server::utilities::config_parse::Config;
@@ -30,25 +30,37 @@ mod utilities;
 /// - PUSH `key` `value`
 /// - POP `key`
 pub struct Classic {
+    /// Sender to send data to database thread
     data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
+
+    /// Host address where the interface bind and listen
     address: String,
+
+    /// Task of the interface, it is used for health check
     thread: Option<JoinHandle<()>>,
+
+    /// Application's config file
     config: Arc<RwLock<Config>>,
 }
 
 impl Classic {
     /// Create new interface
+    ///
+    /// # Parmeters
+    /// - `data_sender`: Sender to send data to database thread
+    /// - `address`: Host address where the interface bind and listen
+    /// - `config`: Application's config file
     pub fn new(
         data_sender: Arc<Mutex<Sender<DatabaseAction>>>,
         address: String,
         config: Arc<RwLock<Config>>,
     ) -> Self {
-        return Self {
+        Self {
             data_sender,
             address,
             thread: None,
             config,
-        };
+        }
     }
 }
 
@@ -68,9 +80,6 @@ impl ApplicationInterface for Classic {
 
     /// Check function that interface is running
     fn is_it_run(&self) -> Option<bool> {
-        match &self.thread {
-            Some(thread) => Some(!thread.is_finished()),
-            None => None,
-        }
+        self.thread.as_ref().map(|thread| !thread.is_finished())
     }
 }

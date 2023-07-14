@@ -1,0 +1,19 @@
+[package]
+name = "onlyati_datastore"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "onlyati_datastore"
+path = "src/lib.rs"
+
+[dependencies]
+chrono = { workspace  = true }
+reqwest = { workspace  = true, features = ["json"] }
+tokio = { workspace = true }
+tracing = { workspace  = true }
+tokio-test = { workspace = true }
+serde = { workspace = true }
+bincode = { workspace = true }

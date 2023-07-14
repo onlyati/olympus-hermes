@@ -6,6 +6,8 @@ use clap::Parser;
 mod arg;
 mod cli;
 mod server;
+mod shell;
+mod common;
 
 fn main() {
     let args = arg::Parameters::parse();
@@ -22,6 +24,10 @@ fn main() {
                 Err(_) => exit(-999),
             },
             Mode::Server { config } => match server::main_async(config).await {
+                Ok(rc) => exit(rc),
+                Err(_) => exit(-999),
+            },
+            Mode::Shell { hostname, config } => match shell::main_async(hostname, config).await {
                 Ok(rc) => exit(rc),
                 Err(_) => exit(-999),
             },

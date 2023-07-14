@@ -1,4 +1,4 @@
-FROM rust:latest as builder
+FROM rust:bookworm as builder
 
 RUN apt-get update && \
     apt-get install -y protobuf-compiler
@@ -8,24 +8,23 @@ RUN cargo new --bin rust-docker
 WORKDIR /rust-docker
 
 RUN rm src/*.rs
-COPY ./proto ./proto
 COPY ./src ./src
-COPY ./build.rs ./build.rs
 COPY ./Cargo.toml ./Cargo.toml
+COPY ./crates ./crates
 
 RUN cargo update \
     && cargo build --release
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 ARG APP=/usr/local/bin
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates tzdata coreutils locales curl && \
+    apt-get install -y ca-certificates tzdata coreutils locales curl libssl-dev && \
     rm -rf /var/lib/apt/lists/*
 
-EXPOSE 3030
 EXPOSE 3031
 EXPOSE 3032
+EXPOSE 3033
 
 ENV HERMES_LOG=info
 ENV HERMES_CLI_LOG=error

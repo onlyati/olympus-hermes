@@ -1,36 +1,37 @@
 [[record]]
-key = "/root/test1"
-value = "This is         value"
+key = "/hermes1/test1"
+value = "This is a value"
+override = true
 
 [[record]]
-key = "/root/test2"
+key = "/hermes1/test2"
 value = "This is another value"
 
 [[record]]
-key = "/root/status/server1"
+key = "/hermes1/status/server1"
 value = "online"
 
 [[record]]
-key = "/root/status/server2"
+key = "/hermes1/status/server2"
 value = "online"
 
 [[record]]
-key = "/root/status/server3"
+key = "/hermes1/status/server3"
 value = "offline"
 
 [[record]]
-key = "/root/status/server4"
+key = "/hermes1/status/server4"
 value = "online"
 
 [[record]]
-key = "/root/status/proxy"
+key = "/hermes1/status/proxy"
 value = "online"
 
 [[hook]]
-prefix = "/root/arpa"
+prefix = "/hermes1/arpa"
 links = [ "http://127.0.0.1:9999/getone", "http://127.0.0.1:9999/getanotherone" ]
 
 [[hook]]
-prefix = "/root/another"
+prefix = "/hermes1/another"
 links = [ "http://127.0.0.1:9999/whatis" ]
 
